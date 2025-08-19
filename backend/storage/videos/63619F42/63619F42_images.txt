@@ -1,0 +1,12 @@
+file '/home/image2video/backend/storage/uploads/D02B43FB/20250818_154252_c4e053_geda_perfil.jpg'
+duration 2.0
+file '/home/image2video/backend/storage/uploads/D02B43FB/20250818_154235_57317d_ChatGPT Image 13 de jul. de 2025, 07_55_57.png'
+duration 2.0
+file '/home/image2video/backend/storage/uploads/B4799BF2/20250818_153750_33ca57_geda_perfil.jpg'
+duration 2.0
+file '/home/image2video/backend/storage/uploads/D02B43FB/20250818_154235_a616a1_ChatGPT Image 13 de jul. de 2025, 07_55_53.png'
+duration 2.0
+file '/home/image2video/backend/storage/uploads/B4799BF2/20250818_153750_bcb7ce_ChatGPT Image 13 de jul. de 2025, 07_55_45 - Copia.png'
+duration 2.0
+file '/home/image2video/backend/storage/uploads/B4799BF2/20250818_153750_4521b6_ChatGPT Image 13 de jul. de 2025, 07_55_53 - Copia.png'
+duration 2.0

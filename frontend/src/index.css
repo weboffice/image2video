@@ -1,0 +1,159 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Premium Photo-to-Video Design System */
+@layer base {
+  :root {
+    /* Core Brand Colors */
+    --background: 220 25% 6%;
+    --foreground: 220 10% 98%;
+    
+    /* Surface Colors */
+    --card: 220 20% 8%;
+    --card-foreground: 220 10% 95%;
+    
+    /* Interactive Elements */
+    --primary: 217 91% 60%;
+    --primary-foreground: 220 10% 98%;
+    --primary-hover: 217 91% 55%;
+    
+    --secondary: 220 15% 12%;
+    --secondary-foreground: 220 10% 90%;
+    --secondary-hover: 220 15% 15%;
+    
+    /* Status Colors */
+    --success: 142 76% 36%;
+    --success-foreground: 220 10% 98%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 220 10% 98%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 220 10% 98%;
+    
+    /* Utility Colors */
+    --muted: 220 15% 10%;
+    --muted-foreground: 220 10% 70%;
+    --accent: 217 91% 60%;
+    --accent-foreground: 220 10% 98%;
+    
+    /* Borders & Inputs */
+    --border: 220 15% 15%;
+    --input: 220 15% 12%;
+    --ring: 217 91% 60%;
+    
+    /* Progress & Animation */
+    --progress-bg: 220 15% 12%;
+    --progress-fill: 217 91% 60%;
+    
+    /* Glass Morphism */
+    --glass-bg: 220 20% 8% / 0.8;
+    --glass-border: 220 30% 25% / 0.3;
+    
+    --radius: 12px;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    background-image: 
+      radial-gradient(circle at 20% 80%, hsl(217 91% 60% / 0.15) 0%, transparent 50%),
+      radial-gradient(circle at 80% 20%, hsl(142 76% 36% / 0.1) 0%, transparent 50%);
+  }
+}
+
+@layer components {
+  /* Glass Card Effect */
+  .glass-card {
+    @apply bg-card/80 backdrop-blur-lg border border-white/10 rounded-xl;
+  }
+  
+  /* Upload Zone */
+  .upload-zone {
+    @apply glass-card border-2 border-dashed border-primary/30 hover:border-primary/50 transition-all duration-300;
+  }
+  
+  .upload-zone.drag-over {
+    @apply border-primary bg-primary/5 scale-[1.02];
+  }
+  
+  /* Progress Animation */
+  .progress-bar {
+    @apply relative overflow-hidden rounded-full bg-progress-bg;
+  }
+  
+  .progress-fill {
+    @apply h-full bg-gradient-to-r from-primary to-accent transition-all duration-500 ease-out;
+  }
+  
+  .progress-fill::after {
+    content: '';
+    @apply absolute inset-0 bg-gradient-to-r from-white/20 to-transparent;
+    animation: shimmer 2s infinite;
+  }
+  
+  /* Template Cards */
+  .template-card {
+    @apply glass-card cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-primary/25;
+  }
+  
+  .template-card.selected {
+    @apply ring-2 ring-primary bg-primary/10;
+  }
+  
+  /* Status Badges */
+  .status-badge {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium;
+  }
+  
+  .status-uploading {
+    @apply bg-warning/20 text-warning border border-warning/30;
+  }
+  
+  .status-processing {
+    @apply bg-primary/20 text-primary border border-primary/30;
+  }
+  
+  .status-done {
+    @apply bg-success/20 text-success border border-success/30;
+  }
+  
+  .status-error {
+    @apply bg-destructive/20 text-destructive border border-destructive/30;
+  }
+}
+
+@layer utilities {
+  /* Animation Keyframes */
+  @keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+  
+  @keyframes pulse-glow {
+    0%, 100% { 
+      box-shadow: 0 0 20px hsl(217 91% 60% / 0.4);
+    }
+    50% { 
+      box-shadow: 0 0 30px hsl(217 91% 60% / 0.6), 0 0 40px hsl(217 91% 60% / 0.3);
+    }
+  }
+  
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+  }
+  
+  .animate-pulse-glow {
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+  
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+}
