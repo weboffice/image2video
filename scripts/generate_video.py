@@ -318,6 +318,48 @@ class VideoGenerator:
             print(f"⚠️  Erro ao criar grade, usando primeira foto")
             return self.create_fade_effect(photos[0], duration, fps)
     
+    def add_background_audio(self, video_path: str, output_path: Path, duration: float):
+        """Adiciona áudio de fundo ao vídeo"""
+        # Caminho para o áudio de fundo (usar versão limpa sem metadados)
+        audio_path = self.storage_dir.parent / "assets" / "source_bg_clean.mp3"
+        
+        if not audio_path.exists():
+            print("🔇 Áudio de fundo não encontrado, criando vídeo sem áudio")
+            # Apenas copiar o vídeo sem áudio
+            subprocess.run(["cp", str(video_path), str(output_path)], check=True)
+            return
+        
+        print(f"🎵 Adicionando áudio de fundo: {audio_path}")
+        
+        # Comando FFmpeg para adicionar áudio de fundo
+        cmd = [
+            "ffmpeg", "-y",
+            "-i", str(video_path),  # Vídeo de entrada
+            "-i", str(audio_path),  # Áudio de fundo
+            "-c:v", "copy",  # Copiar vídeo sem recodificar
+            "-c:a", "aac",   # Codificar áudio como AAC
+            "-b:a", "128k",  # Bitrate do áudio
+            "-shortest",     # Terminar quando o stream mais curto acabar
+            "-filter_complex", f"[1:a]volume=0.3,afade=t=in:st=0:d=2,afade=t=out:st={duration-2}:d=2[audio_out]",
+            "-map", "0:v",   # Mapear vídeo do primeiro input
+            "-map", "[audio_out]",  # Mapear áudio processado
+            str(output_path)
+        ]
+        
+        try:
+            subprocess.run(cmd, check=True, capture_output=True)
+            print("✅ Áudio de fundo adicionado com sucesso")
+        except subprocess.CalledProcessError as e:
+            print(f"⚠️  Erro ao adicionar áudio, criando vídeo sem áudio: {e}")
+            # Fallback: copiar vídeo sem áudio
+            subprocess.run(["cp", str(video_path), str(output_path)], check=True)
+        
+        # Limpar arquivo temporário
+        try:
+            os.remove(video_path)
+        except:
+            pass
+    
     def generate_video(self, job_id: str, template_id: str = None, output_name: str = None):
         """Gera vídeo completo usando template"""
         print(f"🎬 Gerando vídeo para job: {job_id}")
@@ -450,16 +492,22 @@ class VideoGenerator:
             
             # Concatenar segmentos
             print("🔗 Concatenando segmentos...")
+            
+            # Primeiro, criar vídeo sem áudio
+            temp_video = self.temp_dir / f"{job_id}_temp_video.mp4"
             cmd = [
                 "ffmpeg", "-y",
                 "-f", "concat",
                 "-safe", "0",
                 "-i", str(concat_file),
                 "-c", "copy",
-                str(output_path)
+                str(temp_video)
             ]
             
             subprocess.run(cmd, check=True)
+            
+            # Adicionar áudio de fundo se disponível
+            self.add_background_audio(temp_video, output_path, current_time)
             
             print(f"✅ Vídeo gerado com sucesso: {output_path}")
             print(f"📊 Duração: {current_time:.1f} segundos")

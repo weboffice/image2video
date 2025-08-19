@@ -32,6 +32,7 @@ export interface VideoConfig {
   outputFormat: 'mp4' | 'mov' | 'avi';
   resolution: '720p' | '1080p' | '4k';
   fps: 24 | 30 | 60;
+  backgroundAudio?: boolean; // Opcional, padrão true
 }
 
 export interface PhotoConfig {

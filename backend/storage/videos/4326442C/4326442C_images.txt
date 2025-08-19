@@ -1,0 +1,2 @@
+file '/home/image2video/source/image2video/backend/storage/uploads/TEST_AUDIO_JOB/photo1.jpg'
+duration 12.0

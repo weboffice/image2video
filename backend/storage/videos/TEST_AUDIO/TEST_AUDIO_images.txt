@@ -1,0 +1,2 @@
+file 'storage/test_image.jpg'
+duration 10.0

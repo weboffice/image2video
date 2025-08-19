@@ -33,6 +33,7 @@ class VideoProcessor:
             output_format = config['output_format']
             resolution = config['resolution']
             fps = config['fps']
+            background_audio = config.get('background_audio', True)  # Padrão True para compatibilidade
             
             logger.info(f"🎬 Iniciando criação do vídeo {job_id}")
             
@@ -55,7 +56,8 @@ class VideoProcessor:
                 template, 
                 photos, 
                 resolution, 
-                fps
+                fps,
+                background_audio
             )
             
             # Verificar se o comando foi construído corretamente
@@ -206,7 +208,7 @@ class VideoProcessor:
     
     def _build_ffmpeg_command(self, image_list_path: Path, output_path: Path, 
                             template: Dict, photos: List[Dict], 
-                            resolution: str, fps: int) -> List[str]:
+                            resolution: str, fps: int, background_audio: bool = True) -> List[str]:
         """Constrói comando FFmpeg avançado com efeitos baseados no template"""
         
         # Configurar resolução
@@ -225,13 +227,14 @@ class VideoProcessor:
         
         # Construir comando FFmpeg com efeitos avançados baseados no template
         return self._build_advanced_ffmpeg_command(
-            photos, template, width, height, fps, total_duration, output_path
+            photos, template, width, height, fps, total_duration, output_path, background_audio
         )
         
     
     def _build_advanced_ffmpeg_command(self, photos: List[Dict], template: Dict, 
                                      width: int, height: int, fps: int, 
-                                     total_duration: float, output_path: Path) -> List[str]:
+                                     total_duration: float, output_path: Path, 
+                                     background_audio: bool = True) -> List[str]:
         """Constrói comando FFmpeg com efeitos baseados no template"""
         
         # Coletar caminhos das fotos
@@ -268,11 +271,12 @@ class VideoProcessor:
         logger.info(f"🎬 Construindo comando FFmpeg para template: {template_id}")
         
         # Usar método simples que funciona - criar slideshow com efeitos baseados no template
-        return self._build_simple_slideshow_command(photo_paths, template, width, height, fps, total_duration, output_path)
+        return self._build_simple_slideshow_command(photo_paths, template, width, height, fps, total_duration, output_path, background_audio)
     
     def _build_simple_slideshow_command(self, photo_paths: List[str], template: Dict, 
                                       width: int, height: int, fps: int, 
-                                      total_duration: float, output_path: Path) -> List[str]:
+                                      total_duration: float, output_path: Path, 
+                                      background_audio: bool = True) -> List[str]:
         """Constrói comando FFmpeg simples que funciona, com variações baseadas no template"""
         
         # Criar arquivo de lista de imagens (método que funcionava)
@@ -291,6 +295,9 @@ class VideoProcessor:
         
         template_id = template.get('id', '')
         
+        # Caminho para o áudio de fundo (usar versão limpa sem metadados)
+        background_audio_path = self.storage_dir.parent / "assets" / "source_bg_clean.mp3"
+        
         # Comando base
         cmd = [
             'ffmpeg', '-y',
@@ -298,6 +305,13 @@ class VideoProcessor:
             '-safe', '0',
             '-i', str(image_list_path)
         ]
+        
+        # Adicionar áudio de fundo se habilitado e arquivo existir
+        if background_audio and background_audio_path.exists():
+            cmd.extend(['-i', str(background_audio_path)])
+            logger.info(f"🎵 Adicionando áudio de fundo: {background_audio_path}")
+        else:
+            logger.info("🔇 Áudio de fundo desabilitado ou arquivo não encontrado")
         
         # Aplicar filtros baseados no template
         if 'grid' in template_id:
@@ -319,7 +333,21 @@ class VideoProcessor:
             '-c:v', 'libx264',
             '-preset', 'medium',
             '-crf', '23',
-            '-pix_fmt', 'yuv420p',
+            '-pix_fmt', 'yuv420p'
+        ])
+        
+        # Configurações de áudio
+        if background_audio and background_audio_path.exists():
+            cmd.extend([
+                '-c:a', 'aac',
+                '-b:a', '128k',
+                '-shortest',  # Termina quando o vídeo ou áudio mais curto acabar
+                '-filter_complex', f'[1:a]volume=0.3,afade=t=in:st=0:d=2,afade=t=out:st={total_duration-2}:d=2[audio_out]',
+                '-map', '0:v',
+                '-map', '[audio_out]'
+            ])
+        
+        cmd.extend([
             '-t', str(total_duration),
             str(output_path)
         ])

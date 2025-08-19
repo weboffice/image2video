@@ -33,6 +33,7 @@ class VideoConfig(BaseModel):
     outputFormat: str = "mp4"
     resolution: str = "1080p"
     fps: int = 30
+    backgroundAudio: bool = True  # Habilitar áudio de fundo por padrão
 
 # Dicionário para rastrear jobs em processamento
 processing_jobs = {}
@@ -102,6 +103,7 @@ async def create_video(config: VideoConfig):
             "output_format": config.outputFormat,
             "resolution": config.resolution,
             "fps": config.fps,
+            "background_audio": config.backgroundAudio,
             "total_duration": total_duration,
             "status": "pending",
             "created_at": datetime.now().isoformat(),
