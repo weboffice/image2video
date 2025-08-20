@@ -10,6 +10,14 @@ from pathlib import Path
 from typing import List, Dict, Any, Optional, Tuple
 import json
 
+# Import para banco de dados e otimizações
+try:
+    from .video_config_db import update_video_config
+    from .video_optimization import optimize_photos_for_video, get_moviepy_optimization_settings, cleanup_optimized_photos
+except ImportError:
+    from video_config_db import update_video_config
+    from video_optimization import optimize_photos_for_video, get_moviepy_optimization_settings, cleanup_optimized_photos
+
 # Imports do MoviePy
 from moviepy.editor import (
     VideoFileClip, ImageClip, CompositeVideoClip, AudioFileClip,
@@ -51,9 +59,9 @@ class MoviePyEditor:
         
         logger.info(f"🗂️ Diretório temporário do MoviePy configurado: {self.temp_dir}")
         
-        # Configurações padrão
-        self.default_fps = 30
-        self.default_resolution = (1920, 1080)
+        # Configurações padrão otimizadas para performance
+        self.default_fps = 24  # FPS otimizado
+        self.default_resolution = (1280, 720)  # 720p para melhor performance
         self.background_audio_volume = 0.3
         
     def create_video_from_config(self, config_path: Path) -> Dict[str, Any]:
@@ -85,7 +93,7 @@ class MoviePyEditor:
             width, height = self._get_resolution_dimensions(resolution)
             
             # Processar fotos e criar clips
-            photo_clips = self._create_photo_clips(photos, template, width, height, fps)
+            photo_clips = self._create_photo_clips(photos, template, width, height, fps, config)
             
             if not photo_clips:
                 error_msg = "Nenhuma foto válida encontrada para criar o vídeo"
@@ -114,12 +122,22 @@ class MoviePyEditor:
             import logging as mp_logging
             mp_logging.getLogger('moviepy').setLevel(mp_logging.WARNING)
             
-            # Usar configurações mais simples para evitar problemas de stdout
+            # 🚀 OTIMIZAÇÃO: Usar configurações otimizadas do MoviePy
+            preset = config.get('quality_preset', 'fast')
+            if preset not in ['fast', 'balanced', 'high_quality']:
+                preset = "fast" if width <= 1280 else "balanced" if width <= 1920 else "high_quality"
+            
+            optimization_settings = get_moviepy_optimization_settings(preset)
+            
+            logger.info(f"🚀 Exportando com preset de otimização: {preset}")
+            
             try:
                 final_video.write_videofile(
                     str(output_path),
-                    fps=24,  # FPS mais baixo para estabilidade
-                    codec='libx264',
+                    fps=optimization_settings['fps'],
+                    codec=optimization_settings['codec'],
+                    preset=optimization_settings['preset'],
+                    ffmpeg_params=optimization_settings['ffmpeg_params'],
                     audio_codec='aac' if background_audio else None,
                     verbose=False,
                     logger=None,
@@ -132,8 +150,10 @@ class MoviePyEditor:
                     final_video_no_audio = final_video.without_audio()
                     final_video_no_audio.write_videofile(
                         str(output_path),
-                        fps=24,
-                        codec='libx264',
+                        fps=optimization_settings['fps'],
+                        codec=optimization_settings['codec'],
+                        preset=optimization_settings['preset'],
+                        ffmpeg_params=optimization_settings['ffmpeg_params'],
                         verbose=False,
                         logger=None
                     )
@@ -205,7 +225,7 @@ class MoviePyEditor:
         return photo_paths
 
     def _create_photo_clips(self, photos: List[Dict], template: Dict, 
-                           width: int, height: int, fps: int) -> List[VideoFileClip]:
+                           width: int, height: int, fps: int, config: Dict = None) -> List[VideoFileClip]:
         """Cria clips de vídeo a partir das fotos baseado no template"""
         clips = []
         
@@ -215,6 +235,30 @@ class MoviePyEditor:
         if not photo_paths:
             logger.error("❌ Nenhuma foto válida encontrada")
             return []
+        
+        # 🚀 OTIMIZAÇÃO: Redimensionar fotos proporcionalmente para melhor performance
+        logger.info("🚀 Otimizando fotos para melhor performance...")
+        try:
+            # Usar preset da configuração ou determinar baseado na resolução
+            preset = config.get('quality_preset', 'fast')
+            if preset not in ['fast', 'balanced', 'high_quality']:
+                preset = "fast" if width <= 1280 else "balanced" if width <= 1920 else "high_quality"
+            
+            # Otimizar fotos
+            optimized_photo_paths = optimize_photos_for_video(
+                photo_paths, 
+                preset=preset,
+                temp_dir=self.temp_dir / "optimized"
+            )
+            
+            if optimized_photo_paths:
+                photo_paths = optimized_photo_paths
+                logger.info(f"✅ {len(photo_paths)} fotos otimizadas com preset '{preset}'")
+            else:
+                logger.warning("⚠️  Falha na otimização, usando fotos originais")
+                
+        except Exception as e:
+            logger.warning(f"⚠️  Erro na otimização de fotos: {e}, usando fotos originais")
         
         # Processar cenas do template
         template_id = template.get('id', '')
@@ -530,27 +574,56 @@ class MoviePyEditor:
     
     def _update_status(self, config_path: Path, status: str, progress: int, 
                       error: str = None, output_path: str = None):
-        """Atualiza o status do processamento"""
+        """Atualiza o status do processamento no banco de dados"""
         try:
-            # Carregar configuração atual
-            with open(config_path, 'r') as f:
-                config = json.load(f)
+            # Extrair job_id do nome do arquivo de configuração
+            job_id = None
             
-            # Atualizar status
-            config['status'] = status
-            config['progress'] = progress
+            # Tentar extrair do nome do arquivo (ex: "123ABC_temp_config.json" -> "123ABC")
+            config_filename = config_path.name
+            if "_temp_config.json" in config_filename:
+                job_id = config_filename.replace("_temp_config.json", "")
+            elif "_config.json" in config_filename:
+                job_id = config_filename.replace("_config.json", "")
             
-            if error:
-                config['error'] = error
+            # Se não conseguiu extrair do nome, tentar ler do arquivo
+            if not job_id:
+                try:
+                    with open(config_path, 'r') as f:
+                        config = json.load(f)
+                    job_id = config.get('job_id')
+                except:
+                    pass
             
-            if output_path:
-                config['output_path'] = output_path
+            if job_id:
+                # Atualizar no banco de dados
+                update_video_config(
+                    job_id=job_id,
+                    status=status,
+                    progress=progress,
+                    error_message=error,
+                    output_path=output_path
+                )
+                logger.info(f"✅ Status atualizado no banco: {job_id} -> {status} ({progress}%)")
+            else:
+                logger.warning(f"⚠️  Não foi possível extrair job_id de {config_path}")
             
-            # Salvar configuração atualizada
-            with open(config_path, 'w') as f:
-                json.dump(config, f, indent=2)
-            
-            logger.info(f"📊 Status atualizado: {status} ({progress}%)")
+            # Também atualizar o arquivo temporário para compatibilidade
+            if config_path.exists():
+                with open(config_path, 'r') as f:
+                    config = json.load(f)
+                
+                config['status'] = status
+                config['progress'] = progress
+                
+                if error:
+                    config['error'] = error
+                
+                if output_path:
+                    config['output_path'] = output_path
+                
+                with open(config_path, 'w') as f:
+                    json.dump(config, f, indent=2)
             
         except Exception as e:
             logger.error(f"Erro ao atualizar status: {e}")

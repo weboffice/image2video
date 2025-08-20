@@ -33,10 +33,11 @@ class VideoConfig(BaseModel):
     templateId: str
     photos: List[Dict[str, Any]]
     outputFormat: str = "mp4"
-    resolution: str = "1080p"
-    fps: int = 30
+    resolution: str = "720p"  # Otimizado para performance
+    fps: int = 24  # FPS otimizado para melhor performance
     backgroundAudio: bool = True  # Habilitar áudio de fundo por padrão
     useMoviePy: bool = True  # Usar MoviePy como padrão
+    qualityPreset: str = "fast"  # Presets: "fast", "balanced", "high_quality"
 
 # Dicionário para rastrear jobs em processamento
 processing_jobs = {}
@@ -104,6 +105,7 @@ async def create_video(config: VideoConfig):
             "fps": config.fps,
             "background_audio": config.backgroundAudio,
             "use_moviepy": config.useMoviePy,
+            "quality_preset": config.qualityPreset,  # Preset de qualidade
             "total_duration": total_duration,
             "status": "pending",
             "created_at": datetime.now().isoformat(),

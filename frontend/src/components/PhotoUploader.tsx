@@ -598,10 +598,7 @@ export const PhotoUploader = ({ onPhotosUploaded, onPhotosOrdered, onJobCreated,
             return null;
           })()}
           
-          {/* Debug visual temporário */}
-          <div className="bg-yellow-200 p-2 mb-2 rounded">
-            <p className="text-xs">DEBUG: Tentando renderizar JobCodeDisplay com sessionJobCode: {sessionJobCode}</p>
-          </div>
+          {/* Debug visual temporário */} 
           
           <JobCodeDisplay
             jobCode={sessionJobCode}

@@ -6,11 +6,15 @@ from pathlib import Path
 from typing import List, Dict, Any
 import logging
 
-# Imports resilientes para MinIO
+# Imports resilientes para MinIO, banco de dados e otimizações
 try:
     from .minio_client import minio_client
+    from .video_config_db import update_video_config
+    from .video_optimization import optimize_photos_for_video, get_ffmpeg_optimization_args, cleanup_optimized_photos
 except ImportError:
     from minio_client import minio_client
+    from video_config_db import update_video_config
+    from video_optimization import optimize_photos_for_video, get_ffmpeg_optimization_args, cleanup_optimized_photos
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -83,6 +87,7 @@ class VideoProcessor:
             
             # Construir comando FFmpeg com efeitos do template
             ffmpeg_cmd = self._build_ffmpeg_command(
+                job_id,  # Passar job_id para otimizações
                 None,  # Não precisamos mais da lista de imagens
                 output_path, 
                 template, 
@@ -238,7 +243,7 @@ class VideoProcessor:
                 
                 photo_index += 1
     
-    def _build_ffmpeg_command(self, image_list_path: Path, output_path: Path, 
+    def _build_ffmpeg_command(self, job_id: str, image_list_path: Path, output_path: Path, 
                             template: Dict, photos: List[Dict], 
                             resolution: str, fps: int, background_audio: bool = True) -> List[str]:
         """Constrói comando FFmpeg avançado com efeitos baseados no template"""
@@ -258,15 +263,26 @@ class VideoProcessor:
         logger.info(f"⏱️ Duração total calculada: {total_duration}s")
         
         # Construir comando FFmpeg com efeitos avançados baseados no template
+        # Ler configuração para passar para otimizações
+        config_data = {}
+        try:
+            # Buscar configuração do banco de dados
+            from video_config_db import get_video_config
+            video_config = get_video_config(job_id)
+            if video_config and video_config.config_data:
+                config_data = video_config.config_data
+        except Exception as e:
+            logger.warning(f"⚠️  Não foi possível obter configuração do banco: {e}")
+        
         return self._build_advanced_ffmpeg_command(
-            photos, template, width, height, fps, total_duration, output_path, background_audio
+            job_id, photos, template, width, height, fps, total_duration, output_path, background_audio, config_data
         )
         
     
-    def _build_advanced_ffmpeg_command(self, photos: List[Dict], template: Dict, 
+    def _build_advanced_ffmpeg_command(self, job_id: str, photos: List[Dict], template: Dict, 
                                      width: int, height: int, fps: int, 
                                      total_duration: float, output_path: Path, 
-                                     background_audio: bool = True) -> List[str]:
+                                     background_audio: bool = True, config: Dict = None) -> List[str]:
         """Constrói comando FFmpeg com efeitos baseados no template"""
         
         # Coletar caminhos das fotos
@@ -298,6 +314,34 @@ class VideoProcessor:
                 photo_paths = available_photos[:len(photos)]  # Usar o mesmo número de fotos solicitadas
             else:
                 return []
+        
+        # 🚀 OTIMIZAÇÃO: Redimensionar fotos proporcionalmente para melhor performance
+        logger.info("🚀 Otimizando fotos para melhor performance...")
+        try:
+            # Usar preset da configuração ou determinar baseado na resolução
+            preset = config.get('quality_preset', 'fast') if config else 'fast'
+            if preset not in ['fast', 'balanced', 'high_quality']:
+                preset = "fast" if width <= 1280 else "balanced" if width <= 1920 else "high_quality"
+            
+            # Criar diretório temporário para fotos otimizadas
+            temp_dir = self.storage_dir / "temp" / f"opt_{job_id}"
+            temp_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Otimizar fotos
+            optimized_photo_paths = optimize_photos_for_video(
+                photo_paths, 
+                preset=preset,
+                temp_dir=temp_dir
+            )
+            
+            if optimized_photo_paths:
+                photo_paths = optimized_photo_paths
+                logger.info(f"✅ {len(photo_paths)} fotos otimizadas com preset '{preset}'")
+            else:
+                logger.warning("⚠️  Falha na otimização, usando fotos originais")
+                
+        except Exception as e:
+            logger.warning(f"⚠️  Erro na otimização de fotos: {e}, usando fotos originais")
         
         template_id = template.get('id', '')
         logger.info(f"🎬 Construindo comando FFmpeg para template: {template_id}")
@@ -373,14 +417,24 @@ class VideoProcessor:
             # Template padrão
             vf = f'scale={width}:{height}:force_original_aspect_ratio=decrease,pad={width}:{height}:(ow-iw)/2:(oh-ih)/2:black'
         
+        # 🚀 OTIMIZAÇÃO: Usar configurações otimizadas do FFmpeg
+        # Usar preset da configuração ou determinar baseado na resolução
+        preset = config.get('quality_preset', 'fast') if config else 'fast'
+        if preset not in ['fast', 'balanced', 'high_quality']:
+            preset = "fast" if width <= 1280 else "balanced" if width <= 1920 else "high_quality"
+        
+        optimization_args = get_ffmpeg_optimization_args(preset)
+        
         cmd.extend([
             '-vf', vf,
             '-r', str(fps),
-            '-c:v', 'libx264',
-            '-preset', 'medium',
-            '-crf', '23',
-            '-pix_fmt', 'yuv420p'
+            '-c:v', 'libx264'
         ])
+        
+        # Adicionar argumentos de otimização
+        cmd.extend(optimization_args)
+        
+        logger.info(f"🚀 Usando preset de otimização: {preset}")
         
         # Configurações de áudio
         if background_audio and background_audio_path.exists():
@@ -642,22 +696,56 @@ class VideoProcessor:
     
     def _update_status(self, config_path: Path, status: str, progress: int, 
                       error: str = None, output_path: str = None):
-        """Atualiza o status do job de vídeo"""
+        """Atualiza o status do job de vídeo no banco de dados"""
         try:
-            with open(config_path, 'r') as f:
-                config = json.load(f)
+            # Extrair job_id do nome do arquivo de configuração
+            job_id = None
             
-            config['status'] = status
-            config['progress'] = progress
+            # Tentar extrair do nome do arquivo (ex: "123ABC_temp_config.json" -> "123ABC")
+            config_filename = config_path.name
+            if "_temp_config.json" in config_filename:
+                job_id = config_filename.replace("_temp_config.json", "")
+            elif "_config.json" in config_filename:
+                job_id = config_filename.replace("_config.json", "")
             
-            if error:
-                config['error'] = error
+            # Se não conseguiu extrair do nome, tentar ler do arquivo
+            if not job_id:
+                try:
+                    with open(config_path, 'r') as f:
+                        config = json.load(f)
+                    job_id = config.get('job_id')
+                except:
+                    pass
             
-            if output_path:
-                config['output_path'] = output_path
+            if job_id:
+                # Atualizar no banco de dados
+                update_video_config(
+                    job_id=job_id,
+                    status=status,
+                    progress=progress,
+                    error_message=error,
+                    output_path=output_path
+                )
+                print(f"✅ Status atualizado no banco: {job_id} -> {status} ({progress}%)")
+            else:
+                print(f"⚠️  Não foi possível extrair job_id de {config_path}")
             
-            with open(config_path, 'w') as f:
-                json.dump(config, f, indent=2)
+            # Também atualizar o arquivo temporário para compatibilidade
+            if config_path.exists():
+                with open(config_path, 'r') as f:
+                    config = json.load(f)
+                
+                config['status'] = status
+                config['progress'] = progress
+                
+                if error:
+                    config['error'] = error
+                
+                if output_path:
+                    config['output_path'] = output_path
+                
+                with open(config_path, 'w') as f:
+                    json.dump(config, f, indent=2)
                 
         except Exception as e:
             logger.error(f"Erro ao atualizar status: {e}")
@@ -742,6 +830,18 @@ class VideoProcessor:
                 except Exception as e:
                     logger.warning(f"⚠️  Erro ao remover arquivo temporário {temp_file}: {e}")
             self.temp_files = []
+        
+        # 🚀 OTIMIZAÇÃO: Limpar fotos otimizadas temporárias
+        try:
+            temp_opt_dir = self.storage_dir / "temp"
+            if temp_opt_dir.exists():
+                import shutil
+                for opt_dir in temp_opt_dir.glob("opt_*"):
+                    if opt_dir.is_dir():
+                        shutil.rmtree(opt_dir)
+                        logger.info(f"🗑️  Diretório de otimização removido: {opt_dir}")
+        except Exception as e:
+            logger.warning(f"⚠️  Erro ao limpar fotos otimizadas: {e}")
         
         # Limpar diretório temporário do FFmpeg
         if hasattr(self, 'temp_dir') and self.temp_dir.exists():
