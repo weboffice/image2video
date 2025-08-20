@@ -14,10 +14,8 @@ DB_HOST = os.getenv("DB_HOST", "localhost")
 DB_PORT = os.getenv("DB_PORT", "3306")
 DB_NAME = os.getenv("DB_NAME", "gvf_imagevideo")
 
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}?charset=utf8mb4",
-)
+# Construir DATABASE_URL a partir das variáveis individuais
+DATABASE_URL = f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}?charset=utf8mb4"
 
 engine = create_engine(
     DATABASE_URL,
