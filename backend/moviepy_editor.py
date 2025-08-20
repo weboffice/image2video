@@ -172,12 +172,30 @@ class MoviePyEditor:
             # Limpar arquivos temporários do MoviePy
             self._cleanup_moviepy_temp_files()
             
-            self._update_status(config_path, "completed", 100, output_path=str(output_path))
+            # 🚀 UPLOAD: Enviar vídeo para MinIO
+            job_id = config['job_id']
+            output_format = config.get('output_format', 'mp4')
+            video_object_key = f"videos/{job_id}_video.{output_format}"
+            
+            logger.info(f"📤 Fazendo upload do vídeo para MinIO: {video_object_key}")
+            self._update_status(config_path, "processing", 95)
+            
+            upload_success = minio_client.upload_file(video_object_key, output_path, "video/mp4")
+            if upload_success:
+                logger.info(f"✅ Vídeo enviado para MinIO: {video_object_key}")
+                # Atualizar status com caminho do MinIO
+                self._update_status(config_path, "completed", 100, output_path=f"minio://{video_object_key}")
+                minio_path = video_object_key
+            else:
+                logger.warning(f"⚠️  Falha ao enviar vídeo para MinIO, mantendo local")
+                self._update_status(config_path, "completed", 100, output_path=str(output_path))
+                minio_path = None
             
             logger.info(f"✅ Vídeo criado com sucesso: {output_path}")
             return {
                 "success": True,
                 "output_path": str(output_path),
+                "minio_path": minio_path,
                 "duration": final_video.duration
             }
             

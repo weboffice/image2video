@@ -238,12 +238,23 @@ async def get_video_status(job_id: str):
                 estimated_duration = video_data.get("estimated_duration", 60)
                 progress = min(int((elapsed / estimated_duration) * 100), 95)  # Máximo 95% até completar
         
+        # 🚀 OTIMIZAÇÃO: Gerar URL de streaming direta para MinIO
+        streaming_url = None
+        if video_config.output_path and video_config.output_path.startswith('minio://'):
+            object_key = video_config.output_path.replace('minio://', '')
+            try:
+                streaming_url = get_minio_client().get_file_url(object_key, expires=3600)  # 1 hora
+                print(f"✅ URL de streaming gerada para frontend: {streaming_url[:50]}...")
+            except Exception as e:
+                print(f"⚠️  Erro ao gerar URL de streaming: {e}")
+        
         return {
             "jobId": job_id,  # Retornar o job_id original
             "status": status,
             "progress": progress,
             "estimated_duration": video_data.get("estimated_duration", 0),
             "outputPath": video_config.output_path,
+            "streamingUrl": streaming_url,  # URL direta para streaming
             "error": video_config.error_message,
             "is_processing": is_processing,
             "template": template_info  # Incluir informações do template
@@ -400,38 +411,63 @@ async def stream_video(job_id: str):
         if output_path.startswith('minio://'):
             # Extrair object key do MinIO
             object_key = output_path.replace('minio://', '')
+            print(f"🔍 Debug - Object key do MinIO: {object_key}")
             
             # Verificar se o arquivo existe no MinIO
             if not get_minio_client().file_exists(object_key):
+                print(f"❌ Arquivo não encontrado no MinIO: {object_key}")
                 raise HTTPException(status_code=404, detail="Vídeo não encontrado no MinIO")
             
-            # Baixar o vídeo temporariamente e servir
-            temp_video_path = STORAGE_DIR / "videos" / f"{actual_job_id}_temp.mp4"
-            if get_minio_client().download_file(object_key, temp_video_path):
-                return FileResponse(
-                    path=temp_video_path,
-                    filename=f"video_{actual_job_id}.mp4",
-                    media_type="video/mp4"
-                )
+            # 🚀 OTIMIZAÇÃO: Gerar URL pré-assinada para streaming direto do MinIO
+            streaming_url = get_minio_client().get_file_url(object_key, expires=3600)  # 1 hora
+            if streaming_url:
+                print(f"✅ URL de streaming gerada: {streaming_url[:50]}...")
+                # Redirecionar para a URL do MinIO para streaming direto
+                return RedirectResponse(url=streaming_url, status_code=302)
             else:
-                raise HTTPException(status_code=500, detail="Erro ao baixar vídeo do MinIO")
+                print(f"❌ Falha ao gerar URL de streaming")
+                raise HTTPException(status_code=500, detail="Erro ao gerar URL de streaming")
         
         else:
             # Vídeo local
             video_path = Path(output_path)
+            print(f"🔍 Debug - Tentando acessar arquivo: {video_path}")
+            print(f"🔍 Debug - Arquivo existe: {video_path.exists()}")
+            
             if not video_path.exists():
-                raise HTTPException(status_code=404, detail="Arquivo de vídeo não encontrado")
+                print(f"❌ Arquivo não encontrado: {video_path}")
+                raise HTTPException(status_code=404, detail=f"Arquivo de vídeo não encontrado: {video_path}")
+            
+            # Verificar se é um arquivo válido
+            if not video_path.is_file():
+                print(f"❌ Caminho não é um arquivo: {video_path}")
+                raise HTTPException(status_code=404, detail="Caminho não aponta para um arquivo válido")
+            
+            # Verificar tamanho do arquivo
+            file_size = video_path.stat().st_size
+            print(f"📊 Tamanho do arquivo: {file_size:,} bytes")
+            
+            if file_size == 0:
+                print(f"❌ Arquivo vazio: {video_path}")
+                raise HTTPException(status_code=404, detail="Arquivo de vídeo está vazio")
             
             # Retornar arquivo de vídeo local
+            print(f"✅ Servindo arquivo: {video_path}")
             return FileResponse(
-                path=video_path,
+                path=str(video_path),  # Converter para string
                 filename=f"video_{actual_job_id}.mp4",
                 media_type="video/mp4"
             )
         
+    except HTTPException:
+        # Re-raise HTTP exceptions (404, etc.)
+        raise
     except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
         print(f"❌ Erro ao fazer stream: {e}")
-        raise HTTPException(status_code=500, detail=f"Erro ao fazer stream: {str(e)}")
+        print(f"❌ Stack trace: {error_details}")
+        raise HTTPException(status_code=500, detail=f"Erro ao fazer stream: {str(e) if str(e) else 'Erro interno do servidor'}")
 
 @router.get("/{job_id}/download")
 async def download_video(job_id: str):

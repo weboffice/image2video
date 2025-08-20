@@ -123,6 +123,7 @@ export interface VideoStatusResponse {
   progress: number;
   estimated_duration: number;
   outputPath?: string;
+  streamingUrl?: string;  // URL direta para streaming do MinIO
   error?: string;
   template?: {
     id: string;

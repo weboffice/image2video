@@ -37,12 +37,21 @@ const Viewer = () => {
     createdAt: new Date().toISOString(), // Não temos essa info na API de vídeos
     updatedAt: new Date().toISOString(), // Não temos essa info na API de vídeos
     expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 dias
-    resultUrl: videoData.status === 'completed' ? `${API_BASE_URL}/api/videos/${jobCode}/stream` : undefined
+    resultUrl: videoData.status === 'completed' ? 
+      (videoData.streamingUrl || `${API_BASE_URL}/api/videos/${jobCode}/stream`) : undefined
   } : null;
 
   console.log('🔍 job:', job);
   console.log('🔍 videoData.outputPath:', videoData?.outputPath);
+  console.log('🔍 videoData.streamingUrl:', videoData?.streamingUrl);
   console.log('🔍 resultUrl:', job?.resultUrl);
+  
+  // Log para debug do streaming
+  if (videoData?.streamingUrl) {
+    console.log('🚀 Usando URL de streaming do MinIO:', videoData.streamingUrl);
+  } else if (job?.resultUrl) {
+    console.log('📡 Usando endpoint local de streaming:', job.resultUrl);
+  }
 
   const loading = videoLoading;
 
