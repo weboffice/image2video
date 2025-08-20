@@ -10,12 +10,12 @@ import json
 try:
     from ..database import SessionLocal
     from ..models import Job, UploadFile
-    from ..minio_client import minio_client
+    from ..minio_client import get_minio_client
     from ..config import STORAGE_DIR, PUBLIC_API_BASE
 except ImportError:
     from database import SessionLocal
     from models import Job, UploadFile
-    from minio_client import minio_client
+    from minio_client import get_minio_client
     from config import STORAGE_DIR, PUBLIC_API_BASE
 
 router = APIRouter(prefix="/api/jobs", tags=["jobs"])
@@ -179,7 +179,7 @@ async def delete_job_file(job_code: str, file_id: int):
         
         # Deletar do MinIO
         object_key = file.object_key
-        minio_deleted = minio_client.delete_file(object_key)
+        minio_deleted = get_minio_client().delete_file(object_key)
         
         if not minio_deleted:
             # Se falhar ao deletar do MinIO, logar mas continuar

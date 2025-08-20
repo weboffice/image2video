@@ -127,5 +127,12 @@ class MinioClient:
             logger.error(f"Erro ao obter informações do arquivo '{object_name}': {e}")
             return None
 
-# Instância global do cliente MinIO
-minio_client = MinioClient()
+# Instância global do cliente MinIO (inicializada sob demanda)
+minio_client = None
+
+def get_minio_client():
+    """Obter instância do cliente MinIO (lazy loading)"""
+    global minio_client
+    if minio_client is None:
+        minio_client = MinioClient()
+    return minio_client

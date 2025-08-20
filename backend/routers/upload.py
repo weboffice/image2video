@@ -5,11 +5,11 @@ from typing import Optional
 try:
     from ..database import SessionLocal
     from ..models import UploadFile
-    from ..minio_client import minio_client
+    from ..minio_client import get_minio_client
 except ImportError:
     from database import SessionLocal
     from models import UploadFile
-    from minio_client import minio_client
+    from minio_client import get_minio_client
 
 router = APIRouter(prefix="/api/upload", tags=["upload"])
 
@@ -21,7 +21,7 @@ async def put_upload(object_key: str, request: Request, content_type: Optional[s
     
     try:
         # Upload para MinIO
-        success = minio_client.upload_data(object_key, body, content_type)
+        success = get_minio_client().upload_data(object_key, body, content_type)
         if not success:
             raise HTTPException(status_code=500, detail="Falha ao fazer upload para MinIO")
         

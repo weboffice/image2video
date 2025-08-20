@@ -12,14 +12,14 @@ from fastapi.responses import FileResponse, RedirectResponse
 try:
     from ..database import SessionLocal
     from ..models import Job, UploadFile
-    from ..minio_client import minio_client
+    from ..minio_client import get_minio_client
     from ..config import STORAGE_DIR, PUBLIC_API_BASE
     from ..templates import TEMPLATES
     from ..video_processor import process_video_job
 except ImportError:
     from database import SessionLocal
     from models import Job, UploadFile
-    from minio_client import minio_client
+    from minio_client import get_minio_client
     from config import STORAGE_DIR, PUBLIC_API_BASE
     from templates import TEMPLATES
     from video_processor import process_video_job
@@ -119,7 +119,7 @@ async def create_video(config: VideoConfig):
         # Upload para MinIO
         config_object_key = f"configs/{video_job_id}_config.json"
         config_json = json.dumps(video_data, indent=2)
-        success = minio_client.upload_data(config_object_key, config_json.encode('utf-8'), "application/json")
+        success = get_minio_client().upload_data(config_object_key, config_json.encode('utf-8'), "application/json")
         
         if success:
             print(f"✅ Configuração enviada para MinIO: {config_object_key}")
@@ -190,11 +190,11 @@ async def get_video_status(job_id: str):
         else:
             # Tentar carregar do MinIO
             config_object_key = f"configs/{actual_job_id}_config.json"
-            if minio_client.file_exists(config_object_key):
+            if get_minio_client().file_exists(config_object_key):
                 try:
                     # Baixar configuração do MinIO
                     temp_config_path = STORAGE_DIR / "videos" / f"{actual_job_id}_config_temp.json"
-                    if minio_client.download_file(config_object_key, temp_config_path):
+                    if get_minio_client().download_file(config_object_key, temp_config_path):
                         with open(temp_config_path, "r") as f:
                             video_data = json.load(f)
                         # Mover para localização padrão
@@ -254,11 +254,11 @@ async def start_video_processing(job_id: str):
         # Verificar se arquivo local existe, senão tentar do MinIO
         if not config_path.exists():
             config_object_key = f"configs/{job_id}_config.json"
-            if minio_client.file_exists(config_object_key):
+            if get_minio_client().file_exists(config_object_key):
                 try:
                     # Baixar configuração do MinIO
                     temp_config_path = STORAGE_DIR / "videos" / f"{job_id}_config_temp.json"
-                    if minio_client.download_file(config_object_key, temp_config_path):
+                    if get_minio_client().download_file(config_object_key, temp_config_path):
                         temp_config_path.rename(config_path)
                         print(f"✅ Configuração baixada do MinIO: {config_object_key}")
                     else:
@@ -391,11 +391,11 @@ async def stream_video(job_id: str):
         # Verificar se arquivo local existe, senão tentar do MinIO
         if not config_path.exists():
             config_object_key = f"configs/{actual_job_id}_config.json"
-            if minio_client.file_exists(config_object_key):
+            if get_minio_client().file_exists(config_object_key):
                 try:
                     # Baixar configuração do MinIO
                     temp_config_path = STORAGE_DIR / "videos" / f"{actual_job_id}_config_temp.json"
-                    if minio_client.download_file(config_object_key, temp_config_path):
+                    if get_minio_client().download_file(config_object_key, temp_config_path):
                         temp_config_path.rename(config_path)
                         print(f"✅ Configuração baixada do MinIO: {config_object_key}")
                     else:
@@ -420,12 +420,12 @@ async def stream_video(job_id: str):
             object_key = output_path.replace('minio://', '')
             
             # Verificar se o arquivo existe no MinIO
-            if not minio_client.file_exists(object_key):
+            if not get_minio_client().file_exists(object_key):
                 raise HTTPException(status_code=404, detail="Vídeo não encontrado no MinIO")
             
             # Baixar o vídeo temporariamente e servir
             temp_video_path = STORAGE_DIR / "videos" / f"{actual_job_id}_temp.mp4"
-            if minio_client.download_file(object_key, temp_video_path):
+            if get_minio_client().download_file(object_key, temp_video_path):
                 return FileResponse(
                     path=temp_video_path,
                     filename=f"video_{actual_job_id}.mp4",
@@ -462,11 +462,11 @@ async def download_video(job_id: str):
         # Verificar se arquivo local existe, senão tentar do MinIO
         if not config_path.exists():
             config_object_key = f"configs/{job_id}_config.json"
-            if minio_client.file_exists(config_object_key):
+            if get_minio_client().file_exists(config_object_key):
                 try:
                     # Baixar configuração do MinIO
                     temp_config_path = STORAGE_DIR / "videos" / f"{job_id}_config_temp.json"
-                    if minio_client.download_file(config_object_key, temp_config_path):
+                    if get_minio_client().download_file(config_object_key, temp_config_path):
                         temp_config_path.rename(config_path)
                         print(f"✅ Configuração baixada do MinIO: {config_object_key}")
                     else:
@@ -491,11 +491,11 @@ async def download_video(job_id: str):
             object_key = output_path.replace('minio://', '')
             
             # Verificar se o arquivo existe no MinIO
-            if not minio_client.file_exists(object_key):
+            if not get_minio_client().file_exists(object_key):
                 raise HTTPException(status_code=404, detail="Vídeo não encontrado no MinIO")
             
             # Gerar URL pré-assinada para download
-            url = minio_client.get_file_url(object_key)
+            url = get_minio_client().get_file_url(object_key)
             if not url:
                 raise HTTPException(status_code=500, detail="Erro ao gerar URL do vídeo")
             

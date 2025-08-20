@@ -3,9 +3,9 @@ from fastapi.responses import RedirectResponse
 
 # Imports resilientes
 try:
-    from ..minio_client import minio_client
+    from ..minio_client import get_minio_client
 except ImportError:
-    from minio_client import minio_client
+    from minio_client import get_minio_client
 
 router = APIRouter(prefix="/api/files", tags=["files"])
 
@@ -14,11 +14,11 @@ async def get_file(object_key: str):
     """Servir arquivo do MinIO"""
     try:
         # Verificar se o arquivo existe no MinIO
-        if not minio_client.file_exists(object_key):
+        if not get_minio_client().file_exists(object_key):
             raise HTTPException(status_code=404, detail="Arquivo não encontrado")
         
         # Gerar URL pré-assinada para download
-        url = minio_client.get_file_url(object_key)
+        url = get_minio_client().get_file_url(object_key)
         if not url:
             raise HTTPException(status_code=500, detail="Erro ao gerar URL do arquivo")
         
@@ -33,7 +33,7 @@ async def get_file(object_key: str):
 async def get_file_info(object_key: str):
     """Obter informações de um arquivo no MinIO"""
     try:
-        info = minio_client.get_file_info(object_key)
+        info = get_minio_client().get_file_info(object_key)
         if not info:
             raise HTTPException(status_code=404, detail="Arquivo não encontrado")
         
@@ -60,7 +60,7 @@ async def get_photo_info(photo_id: str):
         for key in possible_keys:
             print(f"   Verificando: {key}")
             try:
-                if minio_client.file_exists(key):
+                if get_minio_client().file_exists(key):
                     photo_object_key = key
                     print(f"   ✅ Encontrado: {key}")
                     break
@@ -73,7 +73,7 @@ async def get_photo_info(photo_id: str):
             try:
                 print("   🔍 Listando objetos no bucket...")
                 # Listar objetos no bucket para encontrar a foto
-                objects = minio_client.client.list_objects(minio_client.bucket_name, prefix="uploads/", recursive=True)
+                objects = get_minio_client().client.list_objects(get_minio_client().bucket_name, prefix="uploads/", recursive=True)
                 for obj in objects:
                     if photo_id in obj.object_name:
                         photo_object_key = obj.object_name
@@ -88,7 +88,7 @@ async def get_photo_info(photo_id: str):
         
         # Obter informações do arquivo
         try:
-            file_info = minio_client.get_file_info(photo_object_key)
+            file_info = get_minio_client().get_file_info(photo_object_key)
             if not file_info:
                 raise HTTPException(status_code=404, detail="Informações da foto não encontradas")
         except Exception as e:
@@ -97,7 +97,7 @@ async def get_photo_info(photo_id: str):
         
         # Gerar URL de upload
         try:
-            upload_url = minio_client.get_file_url(photo_object_key)
+            upload_url = get_minio_client().get_file_url(photo_object_key)
         except Exception as e:
             print(f"   ⚠️  Erro ao gerar URL: {e}")
             upload_url = None
