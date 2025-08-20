@@ -346,21 +346,25 @@ export const PhotoUploader = ({ onPhotosUploaded, onPhotosOrdered, onJobCreated,
               : i18n.t('dragAndDropPhotos')
             }
           </p>
-          {/* Debug info temporário */}
-          <p className="text-xs text-red-500 mt-1">
-            Debug: sessionJobCode = {sessionJobCode || 'null'}
-          </p>
+
         </div>
       </div>
 
-      {/* Session Info - Mostrar ID da sessão e botão Nova Sessão */}
+      {/* Session Info - Mostrar ID da sessão e botão Nova Sessão sempre que houver sessão */}
       {sessionJobCode && (
         <>
           {/* Debug info */}
           {(() => {
             console.log('🔍 Debug - sessionJobCode:', sessionJobCode, 'totalPhotos:', totalPhotos);
+            console.log('🔍 Debug - Renderizando JobCodeDisplay!');
             return null;
           })()}
+          
+          {/* Debug visual temporário */}
+          <div className="bg-yellow-200 p-2 mb-2 rounded">
+            <p className="text-xs">DEBUG: Tentando renderizar JobCodeDisplay com sessionJobCode: {sessionJobCode}</p>
+          </div>
+          
           <JobCodeDisplay
             jobCode={sessionJobCode}
             status="active"

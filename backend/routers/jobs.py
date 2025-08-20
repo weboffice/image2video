@@ -109,24 +109,52 @@ async def get_job_status(job_code: str):
         # Buscar arquivos do job ordenados por order_index
         files = db.query(UploadFile).filter(UploadFile.job_id == job.id).order_by(UploadFile.order_index, UploadFile.created_at).all()
         
+        # Gerar URLs diretas do MinIO para cada arquivo
+        files_with_urls = []
+        minio_client = get_minio_client()
+        
+        for file in files:
+            # SEMPRE tentar gerar URL pré-assinada do MinIO, independente do status
+            minio_url = None
+            file_exists_in_storage = False
+            
+            try:
+                # Verificar se arquivo existe no MinIO
+                file_exists_in_storage = minio_client.file_exists(file.object_key)
+                if file_exists_in_storage:
+                    minio_url = minio_client.get_file_url(file.object_key, expires=3600)
+                    print(f"✅ URL MinIO gerada para {file.object_key}: {minio_url[:100]}...")
+                else:
+                    print(f"⚠️  Arquivo não encontrado no MinIO: {file.object_key}")
+            except Exception as e:
+                print(f"❌ Erro ao verificar arquivo no MinIO {file.object_key}: {e}")
+            
+            # IMPORTANTE: SEMPRE usar URL do storage como preferência
+            storage_endpoint_url = f"/api/files/{file.object_key}"
+            
+            files_with_urls.append({
+                "id": file.id,
+                "filename": file.filename,
+                "content_type": file.content_type,
+                "size_bytes": file.size_bytes,
+                "object_key": file.object_key,
+                "status": file.status,
+                "order_index": file.order_index,
+                "created_at": file.created_at.isoformat(),
+                # IMPORTANTE: URL que SEMPRE redireciona para o storage
+                "public_url": storage_endpoint_url,  # Sempre usar endpoint que redireciona para MinIO
+                "storage_url": minio_url,  # URL direta do MinIO (se existir)
+                "minio_direct_url": minio_url,  # URL direta do MinIO (se existir)
+                "file_exists_in_storage": file_exists_in_storage,
+                "storage_endpoint": minio_client.endpoint
+            })
+
         return {
             "code": job.code,
             "status": job.status,
             "created_at": job.created_at.isoformat(),
             "updated_at": job.updated_at.isoformat(),
-            "files": [
-                {
-                    "id": file.id,
-                    "filename": file.filename,
-                    "content_type": file.content_type,
-                    "size_bytes": file.size_bytes,
-                    "object_key": file.object_key,
-                    "status": file.status,
-                    "order_index": file.order_index,
-                    "created_at": file.created_at.isoformat()
-                }
-                for file in files
-            ]
+            "files": files_with_urls
         }
     finally:
         db.close()
@@ -141,20 +169,48 @@ async def get_job_files(job_code: str):
             raise HTTPException(status_code=404, detail="Job não encontrado")
         
         files = db.query(UploadFile).filter(UploadFile.job_id == job.id).all()
+        # Gerar URLs diretas do MinIO para cada arquivo
+        files_with_urls = []
+        minio_client = get_minio_client()
+        
+        for file in files:
+            # SEMPRE tentar gerar URL pré-assinada do MinIO, independente do status
+            minio_url = None
+            file_exists_in_storage = False
+            
+            try:
+                # Verificar se arquivo existe no MinIO
+                file_exists_in_storage = minio_client.file_exists(file.object_key)
+                if file_exists_in_storage:
+                    minio_url = minio_client.get_file_url(file.object_key, expires=3600)
+                    print(f"✅ URL MinIO gerada para {file.object_key}: {minio_url[:100]}...")
+                else:
+                    print(f"⚠️  Arquivo não encontrado no MinIO: {file.object_key}")
+            except Exception as e:
+                print(f"❌ Erro ao verificar arquivo no MinIO {file.object_key}: {e}")
+            
+            # IMPORTANTE: SEMPRE usar URL do storage como preferência
+            storage_endpoint_url = f"/api/files/{file.object_key}"
+            
+            files_with_urls.append({
+                "id": file.id,
+                "filename": file.filename,
+                "content_type": file.content_type,
+                "size_bytes": file.size_bytes,
+                "object_key": file.object_key,
+                "status": file.status,
+                "created_at": file.created_at.isoformat(),
+                # IMPORTANTE: URL que SEMPRE redireciona para o storage
+                "public_url": storage_endpoint_url,  # Sempre usar endpoint que redireciona para MinIO
+                "storage_url": minio_url,  # URL direta do MinIO (se existir)
+                "minio_direct_url": minio_url,  # URL direta do MinIO (se existir)
+                "file_exists_in_storage": file_exists_in_storage,
+                "storage_endpoint": minio_client.endpoint
+            })
+
         return {
             "job_code": job_code,
-            "files": [
-                {
-                    "id": file.id,
-                    "filename": file.filename,
-                    "content_type": file.content_type,
-                    "size_bytes": file.size_bytes,
-                    "object_key": file.object_key,
-                    "status": file.status,
-                    "created_at": file.created_at.isoformat()
-                }
-                for file in files
-            ]
+            "files": files_with_urls
         }
     finally:
         db.close()
