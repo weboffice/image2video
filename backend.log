@@ -1,71 +1,8 @@
-INFO:     Started server process [382970]
+INFO:     Started server process [449014]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
 INFO:     Uvicorn running on http://0.0.0.0:8080 (Press CTRL+C to quit)
-INFO:     127.0.0.1:53530 - "OPTIONS /health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53530 - "GET /health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53530 - "OPTIONS /health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53530 - "GET /health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53530 - "OPTIONS /api/jobs/5FAD9634 HTTP/1.1" 200 OK
-INFO:minio_client:Inicializando MinIO Client:
-INFO:minio_client:  Endpoint: cdn.preparaconcursos.com.br
-INFO:minio_client:  Bucket: ghfimagevideo
-INFO:minio_client:  Secure: True
-INFO:minio_client:  Region: us-east-1
-INFO:minio_client:  Access Key: admi***
-INFO:minio_client:✅ Conectividade MinIO OK. Buckets encontrados: 10
-INFO:minio_client:  - acadence.back (criado em: 2025-06-20 19:22:08.817000+00:00)
-INFO:minio_client:  - backup-s3 (criado em: 2025-06-20 19:13:15.239000+00:00)
-INFO:minio_client:  - cdn-public (criado em: 2025-06-25 19:50:28.283000+00:00)
-INFO:minio_client:  - enf-wordpress-bucket (criado em: 2025-06-20 19:14:44.621000+00:00)
-INFO:minio_client:  - ghfimagevideo (criado em: 2025-08-19 11:49:48.632000+00:00)
-INFO:minio_client:  - legislacadosus-wordpress-bucket (criado em: 2025-06-20 19:22:10.108000+00:00)
-INFO:minio_client:  - mentoriasparaconcursos.com.br (criado em: 2025-06-20 19:22:10.398000+00:00)
-INFO:minio_client:  - preparaenfermagem.com.br (criado em: 2025-06-20 19:22:11.262000+00:00)
-INFO:minio_client:  - sala-arquivos-bucket-001 (criado em: 2025-06-20 19:22:12.176000+00:00)
-INFO:minio_client:  - salabucketdeply001 (criado em: 2025-06-20 19:28:03.384000+00:00)
-INFO:minio_client:✅ Bucket 'ghfimagevideo' já existe
-⚠️  Arquivo não encontrado no MinIO: uploads/5FAD9634/20250820_121638_3d1e4f__MG_8588.jpg
-INFO:     127.0.0.1:53530 - "GET /api/jobs/5FAD9634 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53548 - "GET /health HTTP/1.1" 200 OK
-📁 Solicitação de arquivo: uploads/5FAD9634/20250820_121638_3d1e4f__MG_8588.jpg
-❌ Arquivo não encontrado no MinIO: uploads/5FAD9634/20250820_121638_3d1e4f__MG_8588.jpg
-INFO:     127.0.0.1:53554 - "GET /api/files/uploads/5FAD9634/20250820_121638_3d1e4f__MG_8588.jpg HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:53530 - "OPTIONS /api/jobs/upload-url HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53530 - "POST /api/jobs/upload-url HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53530 - "OPTIONS /api/jobs/5FAD9634 HTTP/1.1" 200 OK
-⚠️  Arquivo não encontrado no MinIO: uploads/5FAD9634/20250820_121638_3d1e4f__MG_8588.jpg
-⚠️  Arquivo não encontrado no MinIO: uploads/5FAD9634/20250820_121929_ecd6b0__MG_8588.jpg
-INFO:     127.0.0.1:53530 - "GET /api/jobs/5FAD9634 HTTP/1.1" 200 OK
-📁 Solicitação de arquivo: uploads/5FAD9634/20250820_121929_ecd6b0__MG_8588.jpg
-❌ Arquivo não encontrado no MinIO: uploads/5FAD9634/20250820_121929_ecd6b0__MG_8588.jpg
-INFO:     127.0.0.1:53570 - "GET /api/files/uploads/5FAD9634/20250820_121929_ecd6b0__MG_8588.jpg HTTP/1.1" 404 Not Found
-⚠️  Arquivo não encontrado no MinIO: uploads/5FAD9634/20250820_121638_3d1e4f__MG_8588.jpg
-⚠️  Arquivo não encontrado no MinIO: uploads/5FAD9634/20250820_121929_ecd6b0__MG_8588.jpg
-INFO:     127.0.0.1:56956 - "GET /api/jobs/5FAD9634 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53542 - "OPTIONS /api/jobs/5FAD9634/files/178 HTTP/1.1" 200 OK
-WARNING:minio_client:⚠️  Arquivo 'uploads/5FAD9634/20250820_121638_3d1e4f__MG_8588.jpg' não existe. Nada para deletar.
-INFO:     127.0.0.1:53542 - "DELETE /api/jobs/5FAD9634/files/178 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53542 - "OPTIONS /api/jobs/5FAD9634 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53542 - "OPTIONS /api/jobs/5FAD9634 HTTP/1.1" 200 OK
-⚠️  Arquivo não encontrado no MinIO: uploads/5FAD9634/20250820_121929_ecd6b0__MG_8588.jpg
-INFO:     127.0.0.1:53542 - "GET /api/jobs/5FAD9634 HTTP/1.1" 200 OK
-⚠️  Arquivo não encontrado no MinIO: uploads/5FAD9634/20250820_121929_ecd6b0__MG_8588.jpg
-INFO:     127.0.0.1:52542 - "GET /api/jobs/5FAD9634 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52542 - "OPTIONS /api/jobs/5FAD9634/files/179 HTTP/1.1" 200 OK
-WARNING:minio_client:⚠️  Arquivo 'uploads/5FAD9634/20250820_121929_ecd6b0__MG_8588.jpg' não existe. Nada para deletar.
-INFO:     127.0.0.1:52542 - "DELETE /api/jobs/5FAD9634/files/179 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52542 - "OPTIONS /api/jobs/5FAD9634 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53542 - "OPTIONS /api/jobs/5FAD9634 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53542 - "GET /api/jobs/5FAD9634 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52542 - "GET /api/jobs/5FAD9634 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52542 - "OPTIONS /api/jobs/upload-url HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52542 - "POST /api/jobs/upload-url HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52542 - "OPTIONS /api/jobs/5FAD9634 HTTP/1.1" 200 OK
-⚠️  Arquivo não encontrado no MinIO: uploads/5FAD9634/20250820_122013_5dd66e__MG_8588.jpg
-INFO:     127.0.0.1:52542 - "GET /api/jobs/5FAD9634 HTTP/1.1" 200 OK
-📁 Solicitação de arquivo: uploads/5FAD9634/20250820_122013_5dd66e__MG_8588.jpg
-❌ Arquivo não encontrado no MinIO: uploads/5FAD9634/20250820_122013_5dd66e__MG_8588.jpg
-INFO:     127.0.0.1:44540 - "GET /api/files/uploads/5FAD9634/20250820_122013_5dd66e__MG_8588.jpg HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:52552 - "OPTIONS /health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52552 - "GET /health HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [449014]
