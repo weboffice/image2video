@@ -18,7 +18,10 @@ import {
   AlertCircle,
   RefreshCw,
   MoveUp,
-  MoveDown
+  MoveDown,
+  Clock,
+  Loader2,
+  List
 } from "lucide-react";
 import { toast } from "sonner";
 import { useCreateJob, useUploadURL, useUploadFile, useDeletePhoto, useJobInfo, useReorderPhoto } from "@/hooks/useApi";
@@ -34,9 +37,20 @@ interface PhotoUploaderProps {
   onNewVideo?: () => void; // Callback para iniciar novo vídeo
 }
 
+interface UploadQueueItem {
+  id: string;
+  fileName: string;
+  status: 'waiting' | 'uploading' | 'completed' | 'error';
+  progress: number;
+  error?: string;
+}
+
 export const PhotoUploader = ({ onPhotosUploaded, onPhotosOrdered, onJobCreated, onNewVideo }: PhotoUploaderProps) => {
   const [isUploading, setIsUploading] = useState(false);
   const [sessionJobCode, setSessionJobCode] = useState<string | null>(null);
+  const [uploadQueue, setUploadQueue] = useState<UploadQueueItem[]>([]);
+  const [showUploadQueue, setShowUploadQueue] = useState(false);
+  const [isRefreshingGallery, setIsRefreshingGallery] = useState(false);
 
   // Hooks da API
   const createJob = useCreateJob();
@@ -177,12 +191,31 @@ export const PhotoUploader = ({ onPhotosUploaded, onPhotosOrdered, onJobCreated,
       }
     }
 
-    // Upload imediato dos arquivos
+    // Adicionar arquivos à fila de upload
+    const newQueueItems: UploadQueueItem[] = acceptedFiles.map(file => ({
+      id: `${Date.now()}-${Math.random()}`,
+      fileName: file.name,
+      status: 'waiting' as const,
+      progress: 0
+    }));
+
+    setUploadQueue(prev => [...prev, ...newQueueItems]);
+    setShowUploadQueue(true);
     setIsUploading(true);
     
     try {
-      for (const file of acceptedFiles) {
+      for (let i = 0; i < acceptedFiles.length; i++) {
+        const file = acceptedFiles[i];
+        const queueItem = newQueueItems[i];
+        
         try {
+          // Atualizar status para uploading
+          setUploadQueue(prev => prev.map(item => 
+            item.id === queueItem.id 
+              ? { ...item, status: 'uploading' as const, progress: 10 }
+              : item
+          ));
+
           // 1. Obter URL de upload
           const urlResponse = await uploadURL.mutateAsync({
             filename: file.name,
@@ -190,30 +223,65 @@ export const PhotoUploader = ({ onPhotosUploaded, onPhotosOrdered, onJobCreated,
             job_code: currentJobCode
           });
 
+          // Atualizar progresso
+          setUploadQueue(prev => prev.map(item => 
+            item.id === queueItem.id 
+              ? { ...item, progress: 50 }
+              : item
+          ));
+
           // 2. Fazer upload do arquivo
           await uploadFile.mutateAsync({
             uploadUrl: urlResponse.upload_url,
             file: file
           });
 
+          // Marcar como concluído
+          setUploadQueue(prev => prev.map(item => 
+            item.id === queueItem.id 
+              ? { ...item, status: 'completed' as const, progress: 100 }
+              : item
+          ));
+
+          // Recarregar galeria imediatamente após cada upload
+          setIsRefreshingGallery(true);
+          try {
+            await refetchJobInfo();
+          } finally {
+            setIsRefreshingGallery(false);
+          }
+
           console.log(`✅ Arquivo ${file.name} enviado com sucesso`);
         } catch (error) {
           console.error(`❌ Erro ao enviar ${file.name}:`, error);
+          
+          // Marcar como erro
+          setUploadQueue(prev => prev.map(item => 
+            item.id === queueItem.id 
+              ? { ...item, status: 'error' as const, error: error instanceof Error ? error.message : 'Erro desconhecido' }
+              : item
+          ));
+          
           toast.error(`Erro ao enviar ${file.name}`);
         }
       }
 
-      // 3. Refetch das informações do job para atualizar a lista de fotos
-      await refetchJobInfo();
+      // Contar sucessos após todos os uploads
+      const successCount = newQueueItems.filter(item => {
+        const queueItem = uploadQueue.find(q => q.id === item.id);
+        return queueItem?.status === 'completed';
+      }).length;
       
-      toast.success(`${acceptedFiles.length} foto(s) enviada(s) com sucesso!`);
+      if (successCount > 0) {
+        toast.success(`${successCount} foto(s) enviada(s) com sucesso!`);
+      }
     } catch (error) {
       console.error('Erro geral no upload:', error);
       toast.error(i18n.t('errorUploadingPhotos'));
     } finally {
       setIsUploading(false);
     }
-  }, [sessionJobCode, createJob, uploadURL, uploadFile, refetchJobInfo, onJobCreatedRef]);
+  }, [sessionJobCode, createJob, uploadURL, uploadFile, refetchJobInfo, onJobCreatedRef, uploadQueue]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -334,6 +402,38 @@ export const PhotoUploader = ({ onPhotosUploaded, onPhotosOrdered, onJobCreated,
 
   return (
     <div className="space-y-6">
+      {/* Fixed Upload Status */}
+      {isUploading && (
+        <div className="fixed top-4 right-4 z-50 bg-white border border-blue-200 rounded-lg shadow-lg p-4 min-w-64">
+          <div className="flex items-center gap-3">
+            <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-gray-900">
+                Enviando fotos...
+              </p>
+              <p className="text-xs text-gray-600">
+                {uploadQueue.filter(item => item.status === 'completed').length} de {uploadQueue.length} concluídos
+              </p>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowUploadQueue(true)}
+              className="h-8 w-8 p-0"
+            >
+              <List className="w-4 h-4" />
+            </Button>
+          </div>
+          
+          {/* Mini Progress Bar */}
+          <div className="mt-2">
+            <Progress 
+              value={(uploadQueue.filter(item => item.status === 'completed').length / uploadQueue.length) * 100} 
+              className="h-1"
+            />
+          </div>
+        </div>
+      )}
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -346,9 +446,110 @@ export const PhotoUploader = ({ onPhotosUploaded, onPhotosOrdered, onJobCreated,
               : i18n.t('dragAndDropPhotos')
             }
           </p>
-
         </div>
+        
+        {/* Upload Queue Button */}
+        {uploadQueue.length > 0 && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowUploadQueue(!showUploadQueue)}
+            className="flex items-center gap-2"
+          >
+            <List className="w-4 h-4" />
+            Fila ({uploadQueue.length})
+            {uploadQueue.some(item => item.status === 'uploading') && (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            )}
+          </Button>
+        )}
       </div>
+
+      {/* Upload Queue Window */}
+      {showUploadQueue && uploadQueue.length > 0 && (
+        <Card className="border-blue-200 bg-blue-50">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-medium text-blue-800">
+                Fila de Uploads
+              </CardTitle>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowUploadQueue(false)}
+                className="h-6 w-6 p-0 text-blue-600 hover:text-blue-800"
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="space-y-2 max-h-40 overflow-y-auto">
+              {uploadQueue.map((item) => (
+                <div key={item.id} className="flex items-center gap-3 p-2 bg-white rounded-md border">
+                  {/* Status Icon */}
+                  <div className="flex-shrink-0">
+                    {item.status === 'waiting' && <Clock className="w-4 h-4 text-gray-400" />}
+                    {item.status === 'uploading' && <Loader2 className="w-4 h-4 animate-spin text-blue-500" />}
+                    {item.status === 'completed' && <CheckCircle className="w-4 h-4 text-green-500" />}
+                    {item.status === 'error' && <AlertCircle className="w-4 h-4 text-red-500" />}
+                  </div>
+                  
+                  {/* File Info */}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">
+                      {item.fileName}
+                    </p>
+                    {item.status === 'error' && item.error && (
+                      <p className="text-xs text-red-600 truncate">
+                        {item.error}
+                      </p>
+                    )}
+                  </div>
+                  
+                  {/* Progress */}
+                  <div className="flex-shrink-0 w-16">
+                    {item.status === 'uploading' && (
+                      <Progress value={item.progress} className="h-2" />
+                    )}
+                    {item.status === 'completed' && (
+                      <Badge variant="secondary" className="text-xs bg-green-100 text-green-800">
+                        100%
+                      </Badge>
+                    )}
+                    {item.status === 'error' && (
+                      <Badge variant="destructive" className="text-xs">
+                        Erro
+                      </Badge>
+                    )}
+                    {item.status === 'waiting' && (
+                      <Badge variant="outline" className="text-xs">
+                        Aguardando
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+            
+            {/* Queue Actions */}
+            <div className="flex justify-between items-center mt-3 pt-3 border-t">
+              <div className="text-xs text-gray-600">
+                {uploadQueue.filter(item => item.status === 'completed').length} de {uploadQueue.length} concluídos
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setUploadQueue(prev => prev.filter(item => item.status !== 'completed'))}
+                className="text-xs h-6 px-2"
+                disabled={!uploadQueue.some(item => item.status === 'completed')}
+              >
+                Limpar Concluídos
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Session Info - Mostrar ID da sessão e botão Nova Sessão sempre que houver sessão */}
       {sessionJobCode && (
@@ -410,6 +611,14 @@ export const PhotoUploader = ({ onPhotosUploaded, onPhotosOrdered, onJobCreated,
         <div className="flex justify-center items-center p-8">
           <RefreshCw className="w-6 h-6 mr-2 animate-spin text-blue-600" />
           <span className="text-gray-600">Carregando fotos...</span>
+        </div>
+      )}
+
+      {/* Gallery Refresh Indicator */}
+      {isRefreshingGallery && !isLoadingJobInfo && (
+        <div className="flex justify-center items-center p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <RefreshCw className="w-4 h-4 mr-2 animate-spin text-blue-600" />
+          <span className="text-sm text-blue-700">Atualizando galeria...</span>
         </div>
       )}
 

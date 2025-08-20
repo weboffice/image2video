@@ -113,7 +113,7 @@ TEMPLATES = {
         ],
         "total_duration": 0.0,
         "max_photos": 6,
-        "background_music": "upbeat_showcase.mp3"
+        "background_music": "source_bg.mp3"
     },
     
     "cinematic-showcase-template": {
@@ -416,7 +416,7 @@ TEMPLATES = {
         ],
         "total_duration": 49.0,
         "max_photos": 9,
-        "background_music": "cinematic_epic.mp3"
+        "background_music": "source_bg.mp3"
     },
     
     "thumbnail-zoom-template": {
@@ -486,6 +486,6 @@ TEMPLATES = {
         ],
         "total_duration": 0,
         "max_photos": 10,
-        "background_music": "smooth_transitions.mp3"
+        "background_music": "source_bg.mp3"
     }
 }

@@ -1,6 +1,7 @@
 import subprocess
 import json
 import os
+import tempfile
 from pathlib import Path
 from typing import List, Dict, Any
 import logging
@@ -20,6 +21,20 @@ class VideoProcessor:
         self.videos_dir = storage_dir / "videos"
         self.videos_dir.mkdir(parents=True, exist_ok=True)
         self.use_moviepy = use_moviepy
+        
+        # Configurar diretório temporário para FFmpeg
+        self.temp_dir = storage_dir / "temp"
+        self.temp_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Configurar variáveis de ambiente para FFmpeg usar nosso diretório temporário
+        os.environ['TMPDIR'] = str(self.temp_dir)
+        os.environ['TEMP'] = str(self.temp_dir)
+        os.environ['TMP'] = str(self.temp_dir)
+        
+        # Configurar tempfile para usar nosso diretório
+        tempfile.tempdir = str(self.temp_dir)
+        
+        logger.info(f"🗂️ Diretório temporário do FFmpeg configurado: {self.temp_dir}")
         
         # Importar MoviePyEditor se necessário
         if use_moviepy:
@@ -716,6 +731,7 @@ class VideoProcessor:
 
     def _cleanup_temp_files(self):
         """Limpa arquivos temporários criados durante o processamento"""
+        # Limpar arquivos temporários específicos do processamento
         if hasattr(self, 'temp_files'):
             for temp_file in self.temp_files:
                 try:
@@ -725,6 +741,30 @@ class VideoProcessor:
                 except Exception as e:
                     logger.warning(f"⚠️  Erro ao remover arquivo temporário {temp_file}: {e}")
             self.temp_files = []
+        
+        # Limpar diretório temporário do FFmpeg
+        if hasattr(self, 'temp_dir') and self.temp_dir.exists():
+            try:
+                import shutil
+                # Listar arquivos temporários antes de remover
+                temp_files = list(self.temp_dir.glob("*"))
+                if temp_files:
+                    logger.info(f"🧹 Removendo {len(temp_files)} arquivos temporários do FFmpeg")
+                    for temp_file in temp_files:
+                        try:
+                            if temp_file.is_file():
+                                temp_file.unlink()
+                                logger.debug(f"🗑️ Removido: {temp_file.name}")
+                            elif temp_file.is_dir():
+                                shutil.rmtree(temp_file)
+                                logger.debug(f"🗑️ Diretório removido: {temp_file.name}")
+                        except Exception as e:
+                            logger.warning(f"⚠️ Erro ao remover {temp_file}: {e}")
+                    logger.info("✅ Limpeza de arquivos temporários do FFmpeg concluída")
+                else:
+                    logger.debug("📁 Nenhum arquivo temporário do FFmpeg encontrado")
+            except Exception as e:
+                logger.warning(f"⚠️ Erro ao limpar arquivos temporários do FFmpeg: {e}")
 
 def process_video_job(config_path: Path, storage_dir: Path, use_moviepy: bool = True) -> Dict[str, Any]:
     """Função principal para processar um job de vídeo"""

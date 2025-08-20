@@ -5,6 +5,7 @@ Classe para processamento de vídeo usando MoviePy como alternativa ao FFmpeg
 
 import os
 import logging
+import tempfile
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Tuple
 import json
@@ -34,6 +35,20 @@ class MoviePyEditor:
         self.storage_dir = storage_dir
         self.videos_dir = storage_dir / "videos"
         self.assets_dir = storage_dir.parent / "assets"
+        
+        # Configurar diretório temporário do MoviePy
+        self.temp_dir = storage_dir / "temp"
+        self.temp_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Configurar variáveis de ambiente para MoviePy usar nosso diretório temporário
+        os.environ['TMPDIR'] = str(self.temp_dir)
+        os.environ['TEMP'] = str(self.temp_dir)
+        os.environ['TMP'] = str(self.temp_dir)
+        
+        # Configurar tempfile para usar nosso diretório
+        tempfile.tempdir = str(self.temp_dir)
+        
+        logger.info(f"🗂️ Diretório temporário do MoviePy configurado: {self.temp_dir}")
         
         # Configurações padrão
         self.default_fps = 30
@@ -133,6 +148,9 @@ class MoviePyEditor:
             # Limpar fotos temporárias
             self._cleanup_temp_photos()
             
+            # Limpar arquivos temporários do MoviePy
+            self._cleanup_moviepy_temp_files()
+            
             self._update_status(config_path, "completed", 100, output_path=str(output_path))
             
             logger.info(f"✅ Vídeo criado com sucesso: {output_path}")
@@ -148,6 +166,9 @@ class MoviePyEditor:
             
             # Limpar fotos temporárias mesmo em caso de erro
             self._cleanup_temp_photos()
+            
+            # Limpar arquivos temporários do MoviePy mesmo em caso de erro
+            self._cleanup_moviepy_temp_files()
             
             self._update_status(config_path, "error", 0, error_msg)
             return {"success": False, "error": error_msg}
@@ -215,6 +236,31 @@ class MoviePyEditor:
                 logger.info("🧹 Fotos temporárias removidas")
             except Exception as e:
                 logger.warning(f"⚠️ Erro ao remover fotos temporárias: {e}")
+    
+    def _cleanup_moviepy_temp_files(self):
+        """Remove arquivos temporários criados pelo MoviePy"""
+        if self.temp_dir.exists():
+            try:
+                import shutil
+                # Listar arquivos temporários antes de remover
+                temp_files = list(self.temp_dir.glob("*"))
+                if temp_files:
+                    logger.info(f"🧹 Removendo {len(temp_files)} arquivos temporários do MoviePy")
+                    for temp_file in temp_files:
+                        try:
+                            if temp_file.is_file():
+                                temp_file.unlink()
+                                logger.debug(f"🗑️ Removido: {temp_file.name}")
+                            elif temp_file.is_dir():
+                                shutil.rmtree(temp_file)
+                                logger.debug(f"🗑️ Diretório removido: {temp_file.name}")
+                        except Exception as e:
+                            logger.warning(f"⚠️ Erro ao remover {temp_file}: {e}")
+                    logger.info("✅ Limpeza de arquivos temporários do MoviePy concluída")
+                else:
+                    logger.debug("📁 Nenhum arquivo temporário do MoviePy encontrado")
+            except Exception as e:
+                logger.warning(f"⚠️ Erro ao limpar arquivos temporários do MoviePy: {e}")
     
     def _create_scene_clips(self, photo_paths: List[str], scene: Dict, 
                            template_id: str, width: int, height: int, fps: int) -> List[VideoFileClip]:
