@@ -25,7 +25,7 @@ class Template(BaseModel):
     scenes: List[Scene]
     total_duration: float
     max_photos: int
-    background_music: str = "source_bg_clean.mp3"  # Música padrão
+    background_music: str = "source_bg.mp3"  # Música padrão
 
 # Templates disponíveis
 TEMPLATES = {

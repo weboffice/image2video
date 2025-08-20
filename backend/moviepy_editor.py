@@ -401,14 +401,14 @@ class MoviePyEditor:
         if template and template.get('background_music'):
             audio_filename = template['background_music']
         else:
-            audio_filename = "source_bg_clean.mp3"  # Fallback padrão
+            audio_filename = "source_bg.mp3"  # Fallback padrão
             
         audio_path = self.assets_dir / audio_filename
         
         if not audio_path.exists():
             logger.warning(f"🔇 Áudio de fundo não encontrado: {audio_path}")
             # Tentar fallback para música padrão
-            fallback_path = self.assets_dir / "source_bg_clean.mp3"
+            fallback_path = self.assets_dir / "source_bg.mp3"
             if fallback_path.exists():
                 audio_path = fallback_path
                 logger.info(f"🎵 Usando música padrão como fallback: {audio_path}")

@@ -31,7 +31,7 @@ As seguintes músicas estão configuradas por template:
 | `grid-showcase-template` | `upbeat_showcase.mp3` | Música animada para showcase de fotos |
 | `cinematic-showcase-template` | `cinematic_epic.mp3` | Música épica cinematográfica |
 | `thumbnail-zoom-template` | `smooth_transitions.mp3` | Música suave para transições |
-| *Outros templates* | `source_bg_clean.mp3` | Música padrão (fallback) |
+| *Outros templates* | `source_bg.mp3` | Música padrão (fallback) |
 
 ## Implementação Técnica
 
@@ -49,7 +49,7 @@ def _add_background_audio(self, video_clip: VideoFileClip, job_id: str, template
     if template and template.get('background_music'):
         audio_filename = template['background_music']
     else:
-        audio_filename = "source_bg_clean.mp3"  # Fallback padrão
+        audio_filename = "source_bg.mp3"  # Fallback padrão
 ```
 
 ### FFmpeg Processor
@@ -133,7 +133,7 @@ curl -X POST http://localhost:8080/api/videos/create \
 ```
 backend/
 ├── assets/
-│   ├── source_bg_clean.mp3      # Música padrão
+│   ├── source_bg.mp3            # Música padrão
 │   ├── upbeat_showcase.mp3      # Grid Showcase
 │   ├── cinematic_epic.mp3       # Cinematic Showcase
 │   └── smooth_transitions.mp3   # Thumbnail Zoom
