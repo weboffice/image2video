@@ -87,7 +87,7 @@ class MoviePyEditor:
             
             # Adicionar áudio de fundo se habilitado
             if background_audio:
-                final_video = self._add_background_audio(final_video, job_id)
+                final_video = self._add_background_audio(final_video, job_id, template)
             
             self._update_status(config_path, "processing", 75)
             
@@ -395,16 +395,29 @@ class MoviePyEditor:
         
         return clip
     
-    def _add_background_audio(self, video_clip: VideoFileClip, job_id: str) -> VideoFileClip:
+    def _add_background_audio(self, video_clip: VideoFileClip, job_id: str, template: Dict = None) -> VideoFileClip:
         """Adiciona áudio de fundo ao vídeo"""
-        audio_path = self.assets_dir / "source_bg_clean.mp3"
+        # Usar música específica do template se disponível
+        if template and template.get('background_music'):
+            audio_filename = template['background_music']
+        else:
+            audio_filename = "source_bg_clean.mp3"  # Fallback padrão
+            
+        audio_path = self.assets_dir / audio_filename
         
         if not audio_path.exists():
-            logger.info("🔇 Áudio de fundo não encontrado")
-            return video_clip
+            logger.warning(f"🔇 Áudio de fundo não encontrado: {audio_path}")
+            # Tentar fallback para música padrão
+            fallback_path = self.assets_dir / "source_bg_clean.mp3"
+            if fallback_path.exists():
+                audio_path = fallback_path
+                logger.info(f"🎵 Usando música padrão como fallback: {audio_path}")
+            else:
+                logger.info("🔇 Nenhuma música disponível")
+                return video_clip
         
         try:
-            logger.info(f"🎵 Adicionando áudio de fundo: {audio_path}")
+            logger.info(f"🎵 Adicionando áudio de fundo específico do template: {audio_path}")
             
             # Carregar áudio
             audio_clip = AudioFileClip(str(audio_path))

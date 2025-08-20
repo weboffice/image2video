@@ -312,8 +312,13 @@ class VideoProcessor:
         
         template_id = template.get('id', '')
         
-        # Caminho para o áudio de fundo (usar versão limpa sem metadados)
-        background_audio_path = self.storage_dir.parent / "assets" / "source_bg_clean.mp3"
+        # Caminho para o áudio de fundo - usar música específica do template se disponível
+        if template.get('background_music'):
+            audio_filename = template['background_music']
+        else:
+            audio_filename = "source_bg_clean.mp3"  # Fallback padrão
+            
+        background_audio_path = self.storage_dir.parent / "assets" / audio_filename
         
         # Comando base
         cmd = [
@@ -326,9 +331,17 @@ class VideoProcessor:
         # Adicionar áudio de fundo se habilitado e arquivo existir
         if background_audio and background_audio_path.exists():
             cmd.extend(['-i', str(background_audio_path)])
-            logger.info(f"🎵 Adicionando áudio de fundo: {background_audio_path}")
+            logger.info(f"🎵 Adicionando áudio de fundo específico do template: {background_audio_path}")
+        elif background_audio:
+            # Tentar fallback para música padrão
+            fallback_path = self.storage_dir.parent / "assets" / "source_bg_clean.mp3"
+            if fallback_path.exists():
+                cmd.extend(['-i', str(fallback_path)])
+                logger.info(f"🎵 Usando música padrão como fallback: {fallback_path}")
+            else:
+                logger.info("🔇 Nenhuma música disponível")
         else:
-            logger.info("🔇 Áudio de fundo desabilitado ou arquivo não encontrado")
+            logger.info("🔇 Áudio de fundo desabilitado")
         
         # Aplicar filtros baseados no template
         if 'grid' in template_id:

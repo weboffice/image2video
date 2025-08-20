@@ -25,6 +25,7 @@ class Template(BaseModel):
     scenes: List[Scene]
     total_duration: float
     max_photos: int
+    background_music: str = "source_bg_clean.mp3"  # Música padrão
 
 # Templates disponíveis
 TEMPLATES = {
@@ -111,7 +112,8 @@ TEMPLATES = {
             }
         ],
         "total_duration": 0.0,
-        "max_photos": 6
+        "max_photos": 6,
+        "background_music": "upbeat_showcase.mp3"
     },
     
     "cinematic-showcase-template": {
@@ -413,7 +415,8 @@ TEMPLATES = {
             }
         ],
         "total_duration": 49.0,
-        "max_photos": 9
+        "max_photos": 9,
+        "background_music": "cinematic_epic.mp3"
     },
     
     "thumbnail-zoom-template": {
@@ -482,6 +485,7 @@ TEMPLATES = {
             }
         ],
         "total_duration": 0,
-        "max_photos": 10
+        "max_photos": 10,
+        "background_music": "smooth_transitions.mp3"
     }
 }

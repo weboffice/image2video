@@ -1,5 +1,9 @@
 import os
 from pathlib import Path
+from dotenv import load_dotenv
+
+# Carregar variáveis de ambiente do arquivo .env
+load_dotenv()
 
 # Configurações de armazenamento local
 STORAGE_DIR = Path(os.getenv("STORAGE_DIR", "./storage")).resolve()
