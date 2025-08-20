@@ -4,6 +4,7 @@ from minio.error import S3Error
 from pathlib import Path
 from typing import Optional, BinaryIO
 import logging
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -16,26 +17,67 @@ class MinioClient:
         self.secure = os.getenv("MINIO_SECURE", "false").lower() == "true"
         self.region = os.getenv("MINIO_REGION", "us-east-1")
         
-        self.client = Minio(
-            self.endpoint,
-            access_key=self.access_key,
-            secret_key=self.secret_key,
-            secure=self.secure,
-            region=self.region
-        )
+        # Log das configurações (sem expor credenciais)
+        logger.info(f"Inicializando MinIO Client:")
+        logger.info(f"  Endpoint: {self.endpoint}")
+        logger.info(f"  Bucket: {self.bucket_name}")
+        logger.info(f"  Secure: {self.secure}")
+        logger.info(f"  Region: {self.region}")
+        logger.info(f"  Access Key: {self.access_key[:4]}***")
         
-        self._ensure_bucket_exists()
+        try:
+            self.client = Minio(
+                self.endpoint,
+                access_key=self.access_key,
+                secret_key=self.secret_key,
+                secure=self.secure,
+                region=self.region
+            )
+            
+            # Testar conectividade antes de tentar criar bucket
+            self._test_connection()
+            self._ensure_bucket_exists()
+            
+        except Exception as e:
+            logger.error(f"Erro ao inicializar cliente MinIO: {e}")
+            raise
+    
+    def _test_connection(self):
+        """Testar conectividade básica com o MinIO"""
+        try:
+            # Tentar listar buckets como teste de conectividade
+            buckets = list(self.client.list_buckets())
+            logger.info(f"✅ Conectividade MinIO OK. Buckets encontrados: {len(buckets)}")
+            for bucket in buckets:
+                logger.info(f"  - {bucket.name} (criado em: {bucket.creation_date})")
+        except S3Error as e:
+            logger.error(f"❌ Erro de conectividade MinIO: {e}")
+            if "AccessDenied" in str(e):
+                logger.error("🔑 Verifique as credenciais de acesso (MINIO_ACCESS_KEY/MINIO_SECRET_KEY)")
+            elif "InvalidRequest" in str(e):
+                logger.error("🌐 Verifique o endpoint e configuração HTTPS/HTTP (MINIO_SECURE)")
+            raise
+        except Exception as e:
+            logger.error(f"❌ Erro inesperado ao testar conectividade: {e}")
+            raise
     
     def _ensure_bucket_exists(self):
         """Garantir que o bucket existe"""
         try:
             if not self.client.bucket_exists(self.bucket_name):
-                self.client.make_bucket(self.bucket_name)
-                logger.info(f"Bucket '{self.bucket_name}' criado com sucesso")
+                logger.info(f"Bucket '{self.bucket_name}' não existe. Tentando criar...")
+                self.client.make_bucket(self.bucket_name, location=self.region)
+                logger.info(f"✅ Bucket '{self.bucket_name}' criado com sucesso")
             else:
-                logger.info(f"Bucket '{self.bucket_name}' já existe")
+                logger.info(f"✅ Bucket '{self.bucket_name}' já existe")
         except S3Error as e:
-            logger.error(f"Erro ao verificar/criar bucket: {e}")
+            logger.error(f"❌ Erro ao verificar/criar bucket '{self.bucket_name}': {e}")
+            if "AccessDenied" in str(e):
+                logger.error("🔑 Sem permissão para criar/verificar bucket. Verifique as credenciais e permissões.")
+                logger.error("💡 Dica: O usuário precisa ter permissões de 's3:CreateBucket' e 's3:ListBucket'")
+            elif "BucketAlreadyOwnedByYou" in str(e):
+                logger.warning("⚠️  Bucket já existe e pertence a você. Continuando...")
+                return  # Não é um erro crítico
             raise
     
     def upload_file(self, object_name: str, file_path: Path, content_type: Optional[str] = None) -> bool:
@@ -98,11 +140,25 @@ class MinioClient:
     def delete_file(self, object_name: str) -> bool:
         """Deletar um arquivo do MinIO"""
         try:
+            # Verificar se o arquivo existe antes de tentar deletar
+            if not self.file_exists(object_name):
+                logger.warning(f"⚠️  Arquivo '{object_name}' não existe. Nada para deletar.")
+                return True  # Considerar como sucesso se o arquivo já não existe
+            
             self.client.remove_object(self.bucket_name, object_name)
-            logger.info(f"Arquivo '{object_name}' deletado com sucesso")
+            logger.info(f"✅ Arquivo '{object_name}' deletado com sucesso")
             return True
         except S3Error as e:
-            logger.error(f"Erro ao deletar arquivo '{object_name}': {e}")
+            logger.error(f"❌ Erro ao deletar arquivo '{object_name}': {e}")
+            if "AccessDenied" in str(e):
+                logger.error("🔑 Sem permissão para deletar arquivo. Verifique as credenciais e permissões.")
+                logger.error("💡 Dica: O usuário precisa ter permissão de 's3:DeleteObject'")
+            elif "NoSuchKey" in str(e):
+                logger.warning("⚠️  Arquivo não encontrado. Pode já ter sido deletado.")
+                return True  # Considerar como sucesso se o arquivo não existe
+            return False
+        except Exception as e:
+            logger.error(f"❌ Erro inesperado ao deletar arquivo '{object_name}': {e}")
             return False
     
     def file_exists(self, object_name: str) -> bool:

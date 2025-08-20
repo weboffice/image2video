@@ -1,0 +1,43 @@
+# Configuração MinIO - Exemplo para resolver erro de Access Denied
+# Copie este conteúdo para seu arquivo .env e ajuste os valores conforme necessário
+
+# CONFIGURAÇÃO ATUAL (com problemas)
+# MINIO_ENDPOINT=cdn.preparaconcursos.com.br
+# MINIO_ACCESS_KEY=admin
+# MINIO_SECRET_KEY=SenhaFort3!
+# MINIO_BUCKET=ghfimagevideo
+# MINIO_SECURE=false
+# MINIO_REGION=us-east-1
+
+# CONFIGURAÇÕES RECOMENDADAS PARA RESOLVER O PROBLEMA:
+
+# 1. PRIMEIRA TENTATIVA - Habilitar HTTPS
+MINIO_ENDPOINT=cdn.preparaconcursos.com.br
+MINIO_ACCESS_KEY=admin
+MINIO_SECRET_KEY=SenhaFort3!
+MINIO_BUCKET=ghfimagevideo
+MINIO_SECURE=true
+MINIO_REGION=us-east-1
+
+# 2. SE AINDA NÃO FUNCIONAR - Verificar credenciais
+# As credenciais admin/SenhaFort3! podem não estar corretas
+# Contate o administrador do servidor MinIO para obter:
+# - Access Key correto
+# - Secret Key correto
+# - Permissões necessárias (s3:ListBucket, s3:CreateBucket, s3:GetObject, s3:PutObject, s3:DeleteObject)
+
+# 3. ALTERNATIVA - Usar endpoint diferente (se disponível)
+# MINIO_ENDPOINT=minio.preparaconcursos.com.br
+# MINIO_SECURE=true
+
+# 4. PARA DESENVOLVIMENTO LOCAL
+# MINIO_ENDPOINT=localhost:9000
+# MINIO_ACCESS_KEY=minioadmin
+# MINIO_SECRET_KEY=minioadmin
+# MINIO_SECURE=false
+
+# NOTAS IMPORTANTES:
+# - O endpoint NÃO deve incluir http:// ou https://
+# - Se o servidor redireciona HTTP para HTTPS, use MINIO_SECURE=true
+# - Verifique se o bucket 'ghfimagevideo' existe e você tem permissão para acessá-lo
+# - Execute o script test_minio_connection.py para validar a configuração
