@@ -201,7 +201,7 @@ async def get_video_status(job_id: str):
                         with open(temp_config_path, "r") as f:
                             video_data = json.load(f)
                         # Mover para localização padrão
-                        temp_config_path.rename(config_path)
+                        temp_config_path.rename(job_dir_config_path)
                         print(f"✅ Configuração baixada do MinIO: {config_object_key}")
                     else:
                         raise HTTPException(status_code=404, detail="Falha ao baixar configuração do MinIO")
