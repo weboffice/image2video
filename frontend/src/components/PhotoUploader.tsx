@@ -53,6 +53,10 @@ export const PhotoUploader = ({ onPhotosUploaded, onPhotosOrdered, onJobCreated,
   const [isRefreshingGallery, setIsRefreshingGallery] = useState(false);
   const [removingPhotoId, setRemovingPhotoId] = useState<string | null>(null);
 
+  // Refs para scroll automático
+  const galleryRef = useRef<HTMLDivElement>(null);
+  const uploadQueueRef = useRef<HTMLDivElement>(null);
+
   // Hooks da API
   const createJob = useCreateJob();
   const uploadURL = useUploadURL();
@@ -203,6 +207,32 @@ export const PhotoUploader = ({ onPhotosUploaded, onPhotosOrdered, onJobCreated,
     setUploadQueue(prev => [...prev, ...newQueueItems]);
     setShowUploadQueue(true);
     setIsUploading(true);
+    
+    // Scroll automático para a área de upload/galeria quando upload iniciar
+    setTimeout(() => {
+      // Priorizar scroll para upload queue se estiver visível
+      if (uploadQueueRef.current && showUploadQueue) {
+        uploadQueueRef.current.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'start' 
+        });
+      } 
+      // Caso contrário, scroll para galeria se houver fotos
+      else if (galleryRef.current && totalPhotos > 0) {
+        galleryRef.current.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'start' 
+        });
+      }
+      // Se não houver fotos ainda, scroll para onde a galeria aparecerá
+      else {
+        // Scroll para o final da página onde a galeria aparecerá
+        window.scrollTo({ 
+          top: document.body.scrollHeight, 
+          behavior: 'smooth' 
+        });
+      }
+    }, 150); // Pequeno delay para garantir que o DOM foi atualizado
     
     try {
       for (let i = 0; i < acceptedFiles.length; i++) {
@@ -474,7 +504,7 @@ export const PhotoUploader = ({ onPhotosUploaded, onPhotosOrdered, onJobCreated,
 
       {/* Upload Queue Window */}
       {showUploadQueue && uploadQueue.length > 0 && (
-        <Card className="border-blue-200 bg-blue-50">
+        <Card ref={uploadQueueRef} className="border-blue-200 bg-blue-50">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm font-medium text-blue-800">
@@ -631,7 +661,7 @@ export const PhotoUploader = ({ onPhotosUploaded, onPhotosOrdered, onJobCreated,
 
       {/* Photo List */}
       {totalPhotos > 0 && !isLoadingJobInfo && (
-        <div className="space-y-4">
+        <div ref={galleryRef} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {photos.map((photo, index) => (
               <Card key={photo.id} className="relative group">

@@ -9,6 +9,9 @@ import { Job } from "../types";
 import { useJobStatus, useVideoStatus, useStartVideoProcessing, useDownloadVideo } from "../hooks/useApi";
 import { i18n } from "@/lib/i18n";
 
+// Obter a URL base da API das variáveis de ambiente
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+
 const Viewer = () => {
   const { jobCode } = useParams<{ jobCode: string }>();
   const navigate = useNavigate();
@@ -34,7 +37,7 @@ const Viewer = () => {
     createdAt: new Date().toISOString(), // Não temos essa info na API de vídeos
     updatedAt: new Date().toISOString(), // Não temos essa info na API de vídeos
     expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 dias
-    resultUrl: videoData.status === 'completed' ? `http://localhost:8080/api/videos/${jobCode}/stream` : undefined
+    resultUrl: videoData.status === 'completed' ? `${API_BASE_URL}/api/videos/${jobCode}/stream` : undefined
   } : null;
 
   console.log('🔍 job:', job);
@@ -52,7 +55,7 @@ const Viewer = () => {
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-    resultUrl: 'http://localhost:8080/api/videos/6EB038E9/stream'
+    resultUrl: `${API_BASE_URL}/api/videos/6EB038E9/stream`
   } : null;
 
   const finalJob = job || fallbackJob;

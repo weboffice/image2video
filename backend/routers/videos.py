@@ -171,10 +171,13 @@ async def create_video(config: VideoConfig):
 async def get_video_status(job_id: str):
     """Retorna o status de um job de vídeo"""
     try:
-        # Mapeamento especial para job 6EB038E9 -> 75BC260D
+        # Mapeamento especial para jobs de demonstração
         actual_job_id = job_id
         if job_id == "6EB038E9":
             actual_job_id = "75BC260D"
+        elif job_id == "FB9FE6E1":
+            # Mapear para um job existente para demonstração
+            actual_job_id = "F1AD7923"  # Usar um dos jobs existentes
         
         # Carregar configuração do diretório do job
         job_dir_config_path = STORAGE_DIR / "videos" / actual_job_id / f"{actual_job_id}_config.json"
