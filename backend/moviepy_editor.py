@@ -34,7 +34,8 @@ class MoviePyEditor:
     def __init__(self, storage_dir: Path):
         self.storage_dir = storage_dir
         self.videos_dir = storage_dir / "videos"
-        self.assets_dir = storage_dir.parent / "assets"
+        # Corrigir caminho para assets - está em backend/assets
+        self.assets_dir = Path(__file__).parent / "assets"
         
         # Configurar diretório temporário do MoviePy
         self.temp_dir = storage_dir / "temp"

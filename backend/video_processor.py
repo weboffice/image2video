@@ -333,7 +333,8 @@ class VideoProcessor:
         else:
             audio_filename = "source_bg.mp3"  # Fallback padrão
             
-        background_audio_path = self.storage_dir.parent / "assets" / audio_filename
+        # Corrigir caminho para assets - está em backend/assets
+        background_audio_path = Path(__file__).parent / "assets" / audio_filename
         
         # Comando base
         cmd = [
@@ -349,7 +350,7 @@ class VideoProcessor:
             logger.info(f"🎵 Adicionando áudio de fundo específico do template: {background_audio_path}")
         elif background_audio:
             # Tentar fallback para música padrão
-            fallback_path = self.storage_dir.parent / "assets" / "source_bg.mp3"
+            fallback_path = Path(__file__).parent / "assets" / "source_bg.mp3"
             if fallback_path.exists():
                 cmd.extend(['-i', str(fallback_path)])
                 logger.info(f"🎵 Usando música padrão como fallback: {fallback_path}")
