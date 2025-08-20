@@ -91,7 +91,8 @@ async def get_upload_url(request: UploadURLRequest):
         db.add(upload_rec)
         db.commit()
 
-        public_url = f"/files/{object_key}"
+        # IMPORTANTE: Sempre usar /api/files/ para garantir que as imagens venham do storage MinIO
+        public_url = f"/api/files/{object_key}"
         return UploadURLResponse(upload_url=upload_url, object_key=object_key, public_url=public_url)
     finally:
         db.close()

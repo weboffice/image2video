@@ -1,10 +1,14 @@
 
-import { Video, Sparkles } from "lucide-react";
+import { Video, Sparkles, Database } from "lucide-react";
 import { ApiStatus } from "./ApiStatus";
 import { LanguageSelector } from "./LanguageSelector";
+import { Button } from "./ui/button";
 import { i18n } from "@/lib/i18n";
+import { useNavigate } from "react-router-dom";
 
 const Header = () => {
+  const navigate = useNavigate();
+
   return (
     <header className="relative z-10 border-b border-white/10 bg-background/80 backdrop-blur-lg">
       <div className="container mx-auto px-4 py-4">
@@ -30,6 +34,15 @@ const Header = () => {
               <a href="#how-it-works" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
                 {i18n.t('howItWorks')}
               </a>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate('/storage-demo')}
+                className="text-sm text-muted-foreground hover:text-foreground"
+              >
+                <Database className="w-4 h-4 mr-2" />
+                Storage Demo
+              </Button>
             </nav>
             
             {/* Language Selector */}

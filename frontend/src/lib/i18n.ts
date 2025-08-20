@@ -62,6 +62,7 @@ export const translations = {
     // Toast messages
     sessionStarted: "Session started",
     newSessionStarted: "New session started!",
+    newSession: "New Session",
     templateSelectedToast: "Template selected!",
     noPhotosSelected: "No photos selected",
     waitForUpload: "Wait for all photos to upload",
@@ -85,7 +86,6 @@ export const translations = {
     sendingPhotosToServers: "Sending your photos to our servers...",
     inQueue: "In Queue",
     waitingToBeProcessed: "Your video is waiting to be processed...",
-    creatingVideo: "Creating Video",
     aiCraftingMasterpiece: "Our AI is crafting your masterpiece...",
     videoReady: "Video Ready!",
     videoCreatedSuccessfully: "Your video has been created successfully.",
@@ -188,6 +188,7 @@ export const translations = {
     // Toast messages
     sessionStarted: "Sessão iniciada",
     newSessionStarted: "Nova sessão iniciada!",
+    newSession: "Nova Sessão",
     templateSelectedToast: "Template selecionado!",
     noPhotosSelected: "Nenhuma foto selecionada",
     waitForUpload: "Aguarde o upload de todas as fotos",
@@ -211,7 +212,6 @@ export const translations = {
     sendingPhotosToServers: "Enviando suas fotos para nossos servidores...",
     inQueue: "Na Fila",
     waitingToBeProcessed: "Seu vídeo está aguardando para ser processado...",
-    creatingVideo: "Criando Vídeo",
     aiCraftingMasterpiece: "Nossa IA está criando sua obra-prima...",
     videoReady: "Vídeo Pronto!",
     videoCreatedSuccessfully: "Seu vídeo foi criado com sucesso.",

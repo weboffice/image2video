@@ -9,24 +9,59 @@ except ImportError:
 
 router = APIRouter(prefix="/api/files", tags=["files"])
 
+@router.get("/storage/status")
+async def get_storage_status():
+    """Verificar status do storage MinIO"""
+    try:
+        client = get_minio_client()
+        
+        # Testar conectividade
+        buckets = list(client.client.list_buckets())
+        
+        # Contar arquivos no bucket
+        objects = list(client.client.list_objects(client.bucket_name, recursive=True))
+        
+        return {
+            "status": "healthy",
+            "endpoint": client.endpoint,
+            "bucket": client.bucket_name,
+            "secure": client.secure,
+            "total_buckets": len(buckets),
+            "total_objects": len(objects),
+            "message": "✅ Storage MinIO funcionando - TODAS AS IMAGENS VÊM DO STORAGE"
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": f"❌ Erro no storage: {str(e)}"
+        }
+
 @router.get("/{object_key:path}")
 async def get_file(object_key: str):
-    """Servir arquivo do MinIO"""
+    """Servir arquivo do MinIO - TODAS AS IMAGENS VÊM DO STORAGE"""
     try:
+        print(f"📁 Solicitação de arquivo: {object_key}")
+        
         # Verificar se o arquivo existe no MinIO
         if not get_minio_client().file_exists(object_key):
-            raise HTTPException(status_code=404, detail="Arquivo não encontrado")
+            print(f"❌ Arquivo não encontrado no MinIO: {object_key}")
+            raise HTTPException(status_code=404, detail="Arquivo não encontrado no storage")
         
         # Gerar URL pré-assinada para download
         url = get_minio_client().get_file_url(object_key)
         if not url:
+            print(f"❌ Erro ao gerar URL para: {object_key}")
             raise HTTPException(status_code=500, detail="Erro ao gerar URL do arquivo")
         
-        # Redirecionar para a URL do MinIO
+        print(f"✅ Redirecionando para MinIO: {object_key}")
+        # Redirecionar para a URL do MinIO - GARANTINDO QUE VEM DO STORAGE
         return RedirectResponse(url=url)
         
+    except HTTPException:
+        # Re-raise HTTP exceptions
+        raise
     except Exception as e:
-        print(f"❌ Erro ao servir arquivo: {e}")
+        print(f"❌ Erro inesperado ao servir arquivo: {e}")
         raise HTTPException(status_code=500, detail=f"Erro ao servir arquivo: {str(e)}")
 
 @router.get("/{object_key:path}/info")

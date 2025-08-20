@@ -25,6 +25,7 @@ import { useCreateJob, useUploadURL, useUploadFile, useDeletePhoto, useJobInfo, 
 import { PhotoFile } from "@/types";
 import { api } from "@/lib/api";
 import { i18n } from "@/lib/i18n";
+import { JobCodeDisplay } from "./JobCodeDisplay";
 
 interface PhotoUploaderProps {
   onPhotosUploaded: (photos: PhotoFile[]) => void;
@@ -120,8 +121,11 @@ export const PhotoUploader = ({ onPhotosUploaded, onPhotosOrdered, onJobCreated,
     // Verificar se já existe uma sessão ativa no localStorage
     const existingJobCode = localStorage.getItem('sessionJobCode');
     
+    console.log('🔍 Debug - localStorage sessionJobCode:', existingJobCode);
+    
     if (existingJobCode) {
       setSessionJobCode(existingJobCode);
+      console.log('🔍 Debug - setSessionJobCode chamado com:', existingJobCode);
       
       if (onJobCreatedRef.current) {
         onJobCreatedRef.current(existingJobCode);
@@ -152,7 +156,9 @@ export const PhotoUploader = ({ onPhotosUploaded, onPhotosOrdered, onJobCreated,
       try {
         const jobResult = await createJob.mutateAsync({});
         currentJobCode = jobResult.code;
+        console.log('🔍 Debug - Nova sessão criada:', currentJobCode);
         setSessionJobCode(currentJobCode);
+        console.log('🔍 Debug - setSessionJobCode chamado durante upload com:', currentJobCode);
         
         if (onJobCreatedRef.current) {
           onJobCreatedRef.current(currentJobCode);
@@ -160,6 +166,7 @@ export const PhotoUploader = ({ onPhotosUploaded, onPhotosOrdered, onJobCreated,
 
         // Salvar no localStorage
         localStorage.setItem('sessionJobCode', currentJobCode);
+        console.log('🔍 Debug - sessionJobCode salvo no localStorage:', currentJobCode);
         
         toast.success(`${i18n.t('sessionStarted')}: ${currentJobCode}`);
         console.log('✅ Sessão criada automaticamente:', currentJobCode);
@@ -339,19 +346,29 @@ export const PhotoUploader = ({ onPhotosUploaded, onPhotosOrdered, onJobCreated,
               : i18n.t('dragAndDropPhotos')
             }
           </p>
+          {/* Debug info temporário */}
+          <p className="text-xs text-red-500 mt-1">
+            Debug: sessionJobCode = {sessionJobCode || 'null'}
+          </p>
         </div>
-        
-        {totalPhotos > 0 && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleNewVideo}
-            className="text-xs"
-          >
-            {i18n.t('newSessionStarted')}
-          </Button>
-        )}
       </div>
+
+      {/* Session Info - Mostrar ID da sessão e botão Nova Sessão */}
+      {sessionJobCode && (
+        <>
+          {/* Debug info */}
+          {(() => {
+            console.log('🔍 Debug - sessionJobCode:', sessionJobCode, 'totalPhotos:', totalPhotos);
+            return null;
+          })()}
+          <JobCodeDisplay
+            jobCode={sessionJobCode}
+            status="active"
+            photoCount={totalPhotos}
+            onNewVideo={handleNewVideo}
+          />
+        </>
+      )}
 
       {/* Dropzone - Sempre visível */}
       <div

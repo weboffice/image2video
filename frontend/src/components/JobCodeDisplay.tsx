@@ -95,7 +95,7 @@ export const JobCodeDisplay = ({
                 onClick={onNewVideo}
                 className="text-red-600 hover:text-red-700 hover:bg-red-50 text-xs h-7 px-2 transition-all duration-300 hover:scale-105"
               >
-                {i18n.t('newSessionStarted')}
+                {i18n.t('newSession')}
               </Button>
             )}
           </div>

@@ -5,7 +5,7 @@ import PhotoUploader from "../components/PhotoUploader";
 import TemplateSelector from "../components/TemplateSelector";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
-import { Sparkles, ArrowRight, Video, Settings, CheckCircle } from "lucide-react";
+import { Sparkles, ArrowRight, Video, Settings, CheckCircle, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { PhotoFile } from "@/types";
 import { Template } from "@/types/template";
