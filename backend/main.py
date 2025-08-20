@@ -39,7 +39,7 @@ app.add_middleware(
         "http://127.0.0.1:5173",  # Vite dev server (alternativo)
         "http://127.0.0.1:3000",  # React dev server (alternativo)
         "http://172.24.203.99:5173",
-        "https://imv.engaja.me/" # Frontend dev server (alternativo)
+        "https://imv.engaja.me" # Frontend dev server (alternativo)
     ],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
