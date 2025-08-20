@@ -34,6 +34,7 @@ class VideoConfig(BaseModel):
     resolution: str = "1080p"
     fps: int = 30
     backgroundAudio: bool = True  # Habilitar áudio de fundo por padrão
+    useMoviePy: bool = True  # Usar MoviePy como padrão
 
 # Dicionário para rastrear jobs em processamento
 processing_jobs = {}
@@ -104,6 +105,7 @@ async def create_video(config: VideoConfig):
             "resolution": config.resolution,
             "fps": config.fps,
             "background_audio": config.backgroundAudio,
+            "use_moviepy": config.useMoviePy,
             "total_duration": total_duration,
             "status": "pending",
             "created_at": datetime.now().isoformat(),
@@ -137,7 +139,8 @@ async def create_video(config: VideoConfig):
             
             def process_video():
                 try:
-                    result = process_video_job(video_config_path, STORAGE_DIR)
+                    # Usar o processador especificado na configuração
+                    result = process_video_job(video_config_path, STORAGE_DIR, use_moviepy=config.useMoviePy)
                     if result["success"]:
                         print(f"✅ Vídeo {video_job_id} processado com sucesso")
                     else:
@@ -279,7 +282,12 @@ async def start_video_processing(job_id: str):
         # Iniciar processamento em thread separada
         def process_video():
             try:
-                result = process_video_job(config_path, STORAGE_DIR)
+                # Carregar configuração para obter parâmetros de processamento
+                with open(config_path, 'r') as f:
+                    job_config = json.load(f)
+                use_moviepy = job_config.get('use_moviepy', True)  # Padrão MoviePy
+                
+                result = process_video_job(config_path, STORAGE_DIR, use_moviepy=use_moviepy)
                 if result["success"]:
                     print(f"✅ Vídeo {job_id} processado com sucesso")
                 else:

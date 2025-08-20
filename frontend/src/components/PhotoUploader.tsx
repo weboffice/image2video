@@ -115,34 +115,9 @@ export const PhotoUploader = ({ onPhotosUploaded, onPhotosOrdered, onJobCreated,
 
 
 
-  // Gerar job ID para a sessão ao carregar o componente
+  // Restaurar sessão existente ao montar o componente (se houver)
   useEffect(() => {
-    let isInitialized = false;
-
-    const initializeSession = async () => {
-      if (isInitialized) return; // Evitar múltiplas inicializações
-      isInitialized = true;
-
-      try {
-        const jobResult = await createJobRef.current.mutateAsync({});
-        const newSessionJobCode = jobResult.code;
-        setSessionJobCode(newSessionJobCode);
-        
-        if (onJobCreatedRef.current) {
-          onJobCreatedRef.current(newSessionJobCode);
-        }
-
-        // Salvar apenas o sessionJobCode no localStorage
-        localStorage.setItem('sessionJobCode', newSessionJobCode);
-        
-        toast.success(`${i18n.t('sessionStarted')}: ${newSessionJobCode}`);
-      } catch (error) {
-        console.error('Erro ao inicializar sessão:', error);
-        toast.error(i18n.t('sessionNotInitialized'));
-      }
-    };
-
-    // Verificar se já existe uma sessão ativa
+    // Verificar se já existe uma sessão ativa no localStorage
     const existingJobCode = localStorage.getItem('sessionJobCode');
     
     if (existingJobCode) {
@@ -153,10 +128,8 @@ export const PhotoUploader = ({ onPhotosUploaded, onPhotosOrdered, onJobCreated,
       }
       
       console.log('🔄 Sessão restaurada:', existingJobCode);
-      isInitialized = true; // Marcar como inicializado
     } else {
-      // Inicializar nova sessão
-      initializeSession();
+      console.log('💡 Nenhuma sessão existente. Sessão será criada automaticamente no primeiro upload.');
     }
   }, []); // Executar apenas uma vez ao montar o componente
 
@@ -171,9 +144,30 @@ export const PhotoUploader = ({ onPhotosUploaded, onPhotosOrdered, onJobCreated,
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     console.log('📸 Arquivos aceitos:', acceptedFiles.length);
     
-    if (!sessionJobCode) {
-      toast.error(i18n.t('sessionNotInitialized'));
-      return;
+    let currentJobCode = sessionJobCode;
+    
+    // Se não há sessão ativa, criar uma automaticamente antes do upload
+    if (!currentJobCode) {
+      console.log('🔄 Criando sessão automaticamente antes do upload...');
+      try {
+        const jobResult = await createJob.mutateAsync({});
+        currentJobCode = jobResult.code;
+        setSessionJobCode(currentJobCode);
+        
+        if (onJobCreatedRef.current) {
+          onJobCreatedRef.current(currentJobCode);
+        }
+
+        // Salvar no localStorage
+        localStorage.setItem('sessionJobCode', currentJobCode);
+        
+        toast.success(`${i18n.t('sessionStarted')}: ${currentJobCode}`);
+        console.log('✅ Sessão criada automaticamente:', currentJobCode);
+      } catch (error) {
+        console.error('❌ Erro ao criar sessão automaticamente:', error);
+        toast.error(i18n.t('sessionNotInitialized'));
+        return;
+      }
     }
 
     // Upload imediato dos arquivos
@@ -186,7 +180,7 @@ export const PhotoUploader = ({ onPhotosUploaded, onPhotosOrdered, onJobCreated,
           const urlResponse = await uploadURL.mutateAsync({
             filename: file.name,
             content_type: file.type,
-            job_code: sessionJobCode
+            job_code: currentJobCode
           });
 
           // 2. Fazer upload do arquivo
@@ -212,7 +206,7 @@ export const PhotoUploader = ({ onPhotosUploaded, onPhotosOrdered, onJobCreated,
     } finally {
       setIsUploading(false);
     }
-  }, [sessionJobCode, uploadURL, uploadFile, refetchJobInfo]);
+  }, [sessionJobCode, createJob, uploadURL, uploadFile, refetchJobInfo, onJobCreatedRef]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,

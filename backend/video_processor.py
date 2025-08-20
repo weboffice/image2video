@@ -15,13 +15,30 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class VideoProcessor:
-    def __init__(self, storage_dir: Path):
+    def __init__(self, storage_dir: Path, use_moviepy: bool = True):
         self.storage_dir = storage_dir
         self.videos_dir = storage_dir / "videos"
         self.videos_dir.mkdir(parents=True, exist_ok=True)
+        self.use_moviepy = use_moviepy
+        
+        # Importar MoviePyEditor se necessário
+        if use_moviepy:
+            try:
+                from .moviepy_editor import MoviePyEditor
+                self.moviepy_editor = MoviePyEditor(storage_dir)
+            except ImportError:
+                from moviepy_editor import MoviePyEditor
+                self.moviepy_editor = MoviePyEditor(storage_dir)
     
     def create_video(self, config_path: Path) -> Dict[str, Any]:
         """Cria um vídeo baseado na configuração fornecida"""
+        # Se MoviePy estiver habilitado, usar MoviePyEditor
+        if self.use_moviepy:
+            logger.info("🎬 Usando MoviePy para processamento de vídeo")
+            return self.moviepy_editor.create_video_from_config(config_path)
+        
+        # Caso contrário, usar FFmpeg (método original)
+        logger.info("🎬 Usando FFmpeg para processamento de vídeo")
         try:
             # Carregar configuração
             with open(config_path, 'r') as f:
@@ -696,7 +713,7 @@ class VideoProcessor:
                     logger.warning(f"⚠️  Erro ao remover arquivo temporário {temp_file}: {e}")
             self.temp_files = []
 
-def process_video_job(config_path: Path, storage_dir: Path) -> Dict[str, Any]:
+def process_video_job(config_path: Path, storage_dir: Path, use_moviepy: bool = True) -> Dict[str, Any]:
     """Função principal para processar um job de vídeo"""
     try:
         # Carregar configuração
@@ -709,7 +726,7 @@ def process_video_job(config_path: Path, storage_dir: Path) -> Dict[str, Any]:
         logger.info(f"🎬 Processando vídeo {job_id} com template {template_id}")
         
         # Usar o VideoProcessor integrado ao invés do script externo
-        processor = VideoProcessor(storage_dir)
+        processor = VideoProcessor(storage_dir, use_moviepy=use_moviepy)
         result = processor.create_video(config_path)
         
         if result["success"]:
@@ -720,3 +737,13 @@ def process_video_job(config_path: Path, storage_dir: Path) -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"❌ Erro ao processar vídeo: {e}")
         return {"success": False, "error": str(e)}
+
+
+def process_video_job_with_moviepy(config_path: Path, storage_dir: Path) -> Dict[str, Any]:
+    """Função específica para processar um job de vídeo usando MoviePy"""
+    return process_video_job(config_path, storage_dir, use_moviepy=True)
+
+
+def process_video_job_with_ffmpeg(config_path: Path, storage_dir: Path) -> Dict[str, Any]:
+    """Função específica para processar um job de vídeo usando FFmpeg"""
+    return process_video_job(config_path, storage_dir, use_moviepy=False)

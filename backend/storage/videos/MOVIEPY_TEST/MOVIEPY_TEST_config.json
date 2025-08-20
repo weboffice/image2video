@@ -1,0 +1,107 @@
+{
+  "job_id": "MOVIEPY_TEST",
+  "template": {
+    "id": "grid-showcase-template",
+    "name": "Grid Showcase",
+    "description": "Mostra as primeiras 6 fotos em layout 16:9 com efeitos de movimento e transi\u00e7\u00f5es suaves",
+    "thumbnail": "/templates/grid-showcase-preview.jpg",
+    "scenes": [
+      {
+        "id": "scene-1-grid-showcase",
+        "name": "Grid Showcase",
+        "type": "grid",
+        "duration": 8.0,
+        "max_photos": 6,
+        "effects": [
+          {
+            "id": "grid-layout",
+            "type": "fade",
+            "duration": 2.0,
+            "parameters": {
+              "grid_columns": 3,
+              "grid_rows": 2,
+              "spacing": 15,
+              "fade_in": true,
+              "aspect_ratio": "16:9",
+              "layout": "grid"
+            }
+          },
+          {
+            "id": "wind-effect",
+            "type": "slide",
+            "duration": 3.0,
+            "parameters": {
+              "direction": "horizontal",
+              "intensity": 0.1,
+              "easing": "ease-in-out",
+              "wave_effect": true
+            }
+          },
+          {
+            "id": "grid-reveal",
+            "type": "fade",
+            "duration": 2.0,
+            "parameters": {
+              "reveal_type": "grid",
+              "grid_animation": true,
+              "stagger_delay": 0.2
+            }
+          }
+        ],
+        "order": 1
+      },
+      {
+        "id": "scene-2-individual-showcase",
+        "name": "Individual Showcase",
+        "type": "zoom",
+        "duration": 4.0,
+        "max_photos": 6,
+        "effects": [
+          {
+            "id": "individual-zoom",
+            "type": "zoom",
+            "duration": 4.0,
+            "parameters": {
+              "zoom_start": 1.0,
+              "zoom_end": 1.3,
+              "zoom_center": "center",
+              "easing": "ease-in-out"
+            }
+          },
+          {
+            "id": "smooth-transition",
+            "type": "fade",
+            "duration": 1.0,
+            "parameters": {
+              "fade_in": true,
+              "fade_out": true,
+              "cross_fade": true
+            }
+          }
+        ],
+        "order": 2
+      }
+    ],
+    "total_duration": 0.0,
+    "max_photos": 6
+  },
+  "photos": [
+    {
+      "id": "1",
+      "filePath": "uploads/TEST_AUDIO_JOB/photo1.jpg",
+      "order": 0,
+      "sceneAssignments": []
+    }
+  ],
+  "output_format": "mp4",
+  "resolution": "1080p",
+  "fps": 30,
+  "background_audio": true,
+  "total_duration": 4.0,
+  "status": "error",
+  "created_at": "2025-08-19T08:27:41.054520",
+  "estimated_duration": 4.0,
+  "progress": 0,
+  "output_path": "storage/videos/MOVIEPY_TEST/MOVIEPY_TEST_video.mp4",
+  "error": "Erro ao criar v\u00eddeo com MoviePy: 'NoneType' object has no attribute 'stdout'"
+}

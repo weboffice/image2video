@@ -158,7 +158,8 @@ const Index = () => {
         outputFormat: 'mp4',
         resolution: '1080p',
         fps: 30,
-        backgroundAudio: true // Habilitar áudio de fundo por padrão
+        backgroundAudio: true, // Habilitar áudio de fundo por padrão
+        useMoviePy: true // Usar MoviePy como processador principal
       };
 
       console.log('🎬 Criando vídeo com configuração:', videoConfig);
