@@ -91,8 +91,8 @@ export const PhotoUploader = ({ onPhotosUploaded, onPhotosOrdered, onJobCreated,
   // Converter PhotoInfo do backend para PhotoFile do frontend
   const photos: PhotoFile[] = useMemo(() => {
     return jobInfo?.files?.map(photoInfo => {
-      // Gerar URL pública baseada no object_key
-      const publicUrl = generatePublicUrl(photoInfo.object_key);
+      // IMPORTANTE: Usar public_url do backend (URL direta do CDN) em vez de gerar
+      const publicUrl = photoInfo.public_url || generatePublicUrl(photoInfo.object_key);
       const mappedStatus = mapBackendStatusToFrontend(photoInfo.status);
       
       return {
@@ -105,11 +105,11 @@ export const PhotoUploader = ({ onPhotosUploaded, onPhotosOrdered, onJobCreated,
         fileId: photoInfo.id, // Usar o ID do backend
         // Campos que não vêm do backend
         file: undefined as File, // Não temos o arquivo original
-        preview: publicUrl, // Usar a URL pública gerada
-        imageData: publicUrl, // Usar a URL pública gerada
+        preview: publicUrl, // Usar URL direta do CDN
+        imageData: publicUrl, // Usar URL direta do CDN
         uploadProgress: mappedStatus === 'completed' ? 100 : 0,
         fileSize: photoInfo.size_bytes,
-        uploadUrl: publicUrl, // Usar a URL pública gerada
+        uploadUrl: publicUrl, // Usar URL direta do CDN
         error: undefined
       };
     }) || [];

@@ -64,11 +64,11 @@ const Index = () => {
       objectKey: photoInfo.object_key,
       fileId: photoInfo.id,
       file: undefined as File,
-      preview: generatePublicUrl(photoInfo.object_key),
-      imageData: generatePublicUrl(photoInfo.object_key),
+      preview: photoInfo.public_url || generatePublicUrl(photoInfo.object_key),
+      imageData: photoInfo.public_url || generatePublicUrl(photoInfo.object_key),
       uploadProgress: mappedStatus === 'completed' ? 100 : 0,
       fileSize: photoInfo.size_bytes,
-      uploadUrl: generatePublicUrl(photoInfo.object_key),
+      uploadUrl: photoInfo.public_url || generatePublicUrl(photoInfo.object_key),
       error: undefined
     };
   }) || [];

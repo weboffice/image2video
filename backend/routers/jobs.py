@@ -91,8 +91,19 @@ async def get_upload_url(request: UploadURLRequest):
         db.add(upload_rec)
         db.commit()
 
-        # IMPORTANTE: Sempre usar /api/files/ para garantir que as imagens venham do storage MinIO
-        public_url = f"/api/files/{object_key}"
+        # OPÇÃO 1: URL de redirecionamento (atual)
+        # public_url = f"/api/files/{object_key}"
+        
+        # OPÇÃO 2: URL direta do CDN (mais eficiente, evita redirecionamentos)
+        try:
+            minio_client = get_minio_client()
+            direct_cdn_url = minio_client.get_file_url(object_key, expires=86400)  # 24 horas
+            public_url = direct_cdn_url if direct_cdn_url else f"/api/files/{object_key}"
+        except Exception as e:
+            print(f"⚠️  Erro ao gerar URL direta do CDN: {e}")
+            # Fallback para redirecionamento
+            public_url = f"/api/files/{object_key}"
+        
         return UploadURLResponse(upload_url=upload_url, object_key=object_key, public_url=public_url)
     finally:
         db.close()
@@ -189,8 +200,11 @@ async def get_job_files(job_code: str):
             except Exception as e:
                 print(f"❌ Erro ao verificar arquivo no MinIO {file.object_key}: {e}")
             
-            # IMPORTANTE: SEMPRE usar URL do storage como preferência
+            # OPÇÃO 1: URL de redirecionamento (fallback)
             storage_endpoint_url = f"/api/files/{file.object_key}"
+            
+            # OPÇÃO 2: Usar URL direta do CDN se disponível (mais eficiente)
+            public_url = minio_url if (minio_url and file_exists_in_storage) else storage_endpoint_url
             
             files_with_urls.append({
                 "id": file.id,
@@ -200,8 +214,8 @@ async def get_job_files(job_code: str):
                 "object_key": file.object_key,
                 "status": file.status,
                 "created_at": file.created_at.isoformat(),
-                # IMPORTANTE: URL que SEMPRE redireciona para o storage
-                "public_url": storage_endpoint_url,  # Sempre usar endpoint que redireciona para MinIO
+                # IMPORTANTE: Usar URL direta do CDN quando possível
+                "public_url": public_url,  # URL direta do CDN ou fallback para redirecionamento
                 "storage_url": minio_url,  # URL direta do MinIO (se existir)
                 "minio_direct_url": minio_url,  # URL direta do MinIO (se existir)
                 "file_exists_in_storage": file_exists_in_storage,

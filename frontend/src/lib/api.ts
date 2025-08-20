@@ -37,6 +37,7 @@ export interface PhotoInfo {
   status: string;
   order_index: number;
   created_at: string;
+  public_url: string; // URL direta do CDN ou redirecionamento
 }
 
 export interface DeletePhotoResponse {
