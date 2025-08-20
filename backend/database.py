@@ -2,6 +2,12 @@ import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 
+# Importar config para garantir que o .env seja carregado
+try:
+    from .config import BASE_DIR  # Importação relativa
+except ImportError:
+    from config import BASE_DIR   # Importação direta
+
 DB_USER = os.getenv("DB_USER", "root")
 DB_PASSWORD = os.getenv("DB_PASSWORD", "root")
 DB_HOST = os.getenv("DB_HOST", "localhost")

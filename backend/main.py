@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from contextlib import asynccontextmanager
 import uvicorn
 
 # Imports resilientes
@@ -13,10 +14,20 @@ except ImportError:  # execução direta
     from config import STORAGE_DIR
     from routers import jobs, upload, files, templates, videos
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Gerenciar ciclo de vida da aplicação"""
+    # Startup
+    Base.metadata.create_all(bind=engine)
+    STORAGE_DIR.mkdir(parents=True, exist_ok=True)
+    yield
+    # Shutdown (se necessário)
+
 app = FastAPI(
     title="Photo-to-Video API",
     description="API para conversão de fotos em vídeo",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
 
 # Configurar CORS
@@ -37,14 +48,6 @@ app.add_middleware(
 
 # Servir arquivos estáticos
 app.mount("/files", StaticFiles(directory=str(STORAGE_DIR)), name="files")
-
-@app.on_event("startup")
-async def on_startup():
-    """Inicialização da aplicação"""
-    # Criar tabelas
-    Base.metadata.create_all(bind=engine)
-    # Garantir diretório de storage
-    STORAGE_DIR.mkdir(parents=True, exist_ok=True)
 
 @app.get("/")
 async def root():
