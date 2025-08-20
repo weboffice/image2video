@@ -257,27 +257,10 @@ async def get_video_status(job_id: str):
 async def start_video_processing(job_id: str):
     """Inicia o processamento de um vídeo"""
     try:
-        # Carregar configuração do diretório do job
-        job_dir_config_path = STORAGE_DIR / "videos" / job_id / f"{job_id}_config.json"
-        config_path = job_dir_config_path
-        
-        # Verificar se arquivo local existe, senão tentar do MinIO
-        if not config_path.exists():
-            config_object_key = f"configs/{job_id}_config.json"
-            if get_minio_client().file_exists(config_object_key):
-                try:
-                    # Baixar configuração do MinIO
-                    temp_config_path = STORAGE_DIR / "videos" / f"{job_id}_config_temp.json"
-                    if get_minio_client().download_file(config_object_key, temp_config_path):
-                        temp_config_path.rename(config_path)
-                        print(f"✅ Configuração baixada do MinIO: {config_object_key}")
-                    else:
-                        raise HTTPException(status_code=404, detail="Falha ao baixar configuração do MinIO")
-                except Exception as e:
-                    print(f"❌ Erro ao baixar configuração do MinIO: {e}")
-                    raise HTTPException(status_code=404, detail="Job de vídeo não encontrado")
-            else:
-                raise HTTPException(status_code=404, detail="Job de vídeo não encontrado")
+        # 🚀 OTIMIZAÇÃO: Buscar configuração no banco de dados
+        video_config = get_video_config(job_id)
+        if not video_config:
+            raise HTTPException(status_code=404, detail="Job de vídeo não encontrado")
         
         # Verificar se já está processando
         if job_id in processing_jobs:
@@ -292,12 +275,22 @@ async def start_video_processing(job_id: str):
         # Iniciar processamento em thread separada
         def process_video():
             try:
-                # Carregar configuração para obter parâmetros de processamento
-                with open(config_path, 'r') as f:
-                    job_config = json.load(f)
+                # Obter parâmetros de processamento da configuração do banco
+                job_config = video_config.config_data
                 use_moviepy = job_config.get('use_moviepy', True)  # Padrão MoviePy
                 
-                result = process_video_job(config_path, STORAGE_DIR, use_moviepy=use_moviepy)
+                # Criar arquivo temporário de configuração para compatibilidade com process_video_job
+                temp_config_path = STORAGE_DIR / "videos" / f"{job_id}_temp_config.json"
+                temp_config_path.parent.mkdir(parents=True, exist_ok=True)
+                
+                with open(temp_config_path, "w") as f:
+                    json.dump(job_config, f, indent=2)
+                
+                result = process_video_job(temp_config_path, STORAGE_DIR, use_moviepy=use_moviepy)
+                
+                # Limpar arquivo temporário
+                if temp_config_path.exists():
+                    temp_config_path.unlink()
                 if result["success"]:
                     print(f"✅ Vídeo {job_id} processado com sucesso")
                 else:
@@ -394,33 +387,12 @@ async def stream_video(job_id: str):
         if job_id == "6EB038E9":
             actual_job_id = "75BC260D"
         
-        # Carregar configuração do diretório do job
-        job_dir_config_path = STORAGE_DIR / "videos" / actual_job_id / f"{actual_job_id}_config.json"
-        config_path = job_dir_config_path
+        # 🚀 OTIMIZAÇÃO: Buscar configuração no banco de dados
+        video_config = get_video_config(actual_job_id)
+        if not video_config:
+            raise HTTPException(status_code=404, detail="Job de vídeo não encontrado")
         
-        # Verificar se arquivo local existe, senão tentar do MinIO
-        if not config_path.exists():
-            config_object_key = f"configs/{actual_job_id}_config.json"
-            if get_minio_client().file_exists(config_object_key):
-                try:
-                    # Baixar configuração do MinIO
-                    temp_config_path = STORAGE_DIR / "videos" / f"{actual_job_id}_config_temp.json"
-                    if get_minio_client().download_file(config_object_key, temp_config_path):
-                        temp_config_path.rename(config_path)
-                        print(f"✅ Configuração baixada do MinIO: {config_object_key}")
-                    else:
-                        raise HTTPException(status_code=404, detail="Falha ao baixar configuração do MinIO")
-                except Exception as e:
-                    print(f"❌ Erro ao baixar configuração do MinIO: {e}")
-                    raise HTTPException(status_code=404, detail="Job de vídeo não encontrado")
-            else:
-                raise HTTPException(status_code=404, detail="Job de vídeo não encontrado")
-        
-        # Carregar configuração
-        with open(config_path, 'r') as f:
-            config = json.load(f)
-        
-        output_path = config.get('output_path')
+        output_path = video_config.output_path
         if not output_path:
             raise HTTPException(status_code=404, detail="Vídeo ainda não foi processado")
         
@@ -465,33 +437,12 @@ async def stream_video(job_id: str):
 async def download_video(job_id: str):
     """Download do vídeo processado"""
     try:
-        # Carregar configuração do diretório do job
-        job_dir_config_path = STORAGE_DIR / "videos" / job_id / f"{job_id}_config.json"
-        config_path = job_dir_config_path
+        # 🚀 OTIMIZAÇÃO: Buscar configuração no banco de dados
+        video_config = get_video_config(job_id)
+        if not video_config:
+            raise HTTPException(status_code=404, detail="Job de vídeo não encontrado")
         
-        # Verificar se arquivo local existe, senão tentar do MinIO
-        if not config_path.exists():
-            config_object_key = f"configs/{job_id}_config.json"
-            if get_minio_client().file_exists(config_object_key):
-                try:
-                    # Baixar configuração do MinIO
-                    temp_config_path = STORAGE_DIR / "videos" / f"{job_id}_config_temp.json"
-                    if get_minio_client().download_file(config_object_key, temp_config_path):
-                        temp_config_path.rename(config_path)
-                        print(f"✅ Configuração baixada do MinIO: {config_object_key}")
-                    else:
-                        raise HTTPException(status_code=404, detail="Falha ao baixar configuração do MinIO")
-                except Exception as e:
-                    print(f"❌ Erro ao baixar configuração do MinIO: {e}")
-                    raise HTTPException(status_code=404, detail="Job de vídeo não encontrado")
-            else:
-                raise HTTPException(status_code=404, detail="Job de vídeo não encontrado")
-        
-        # Carregar configuração
-        with open(config_path, 'r') as f:
-            config = json.load(f)
-        
-        output_path = config.get('output_path')
+        output_path = video_config.output_path
         if not output_path:
             raise HTTPException(status_code=404, detail="Vídeo ainda não foi processado")
         
