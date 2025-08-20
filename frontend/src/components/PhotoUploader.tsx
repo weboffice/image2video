@@ -51,6 +51,7 @@ export const PhotoUploader = ({ onPhotosUploaded, onPhotosOrdered, onJobCreated,
   const [uploadQueue, setUploadQueue] = useState<UploadQueueItem[]>([]);
   const [showUploadQueue, setShowUploadQueue] = useState(false);
   const [isRefreshingGallery, setIsRefreshingGallery] = useState(false);
+  const [removingPhotoId, setRemovingPhotoId] = useState<string | null>(null);
 
   // Hooks da API
   const createJob = useCreateJob();
@@ -304,6 +305,9 @@ export const PhotoUploader = ({ onPhotosUploaded, onPhotosOrdered, onJobCreated,
       return;
     }
 
+    // Definir qual foto está sendo removida
+    setRemovingPhotoId(photoId);
+
     try {
       // Se a foto foi enviada, tentar deletar do servidor
       if (photoToRemove.objectKey) {
@@ -320,6 +324,9 @@ export const PhotoUploader = ({ onPhotosUploaded, onPhotosOrdered, onJobCreated,
     } catch (error) {
       console.error('Erro ao remover foto:', error);
       toast.error(i18n.t('errorRemovingPhoto'));
+    } finally {
+      // Limpar o estado de remoção
+      setRemovingPhotoId(null);
     }
   };
 
@@ -659,6 +666,16 @@ export const PhotoUploader = ({ onPhotosUploaded, onPhotosOrdered, onJobCreated,
                         <RefreshCw className="w-8 h-8 text-blue-500 animate-spin opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                       )}
                     </div>
+
+                    {/* Remove Loading Overlay */}
+                    {removingPhotoId === photo.id && (
+                      <div className="absolute inset-0 bg-black bg-opacity-60 flex items-center justify-center z-10">
+                        <div className="bg-white rounded-lg p-4 flex flex-col items-center shadow-lg">
+                          <Loader2 className="w-8 h-8 text-red-500 animate-spin mb-2" />
+                          <span className="text-sm font-medium text-gray-800">Removendo...</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Photo Info */}
@@ -715,9 +732,14 @@ export const PhotoUploader = ({ onPhotosUploaded, onPhotosOrdered, onJobCreated,
                         size="sm"
                         variant="outline"
                         onClick={() => handleRemovePhoto(photo.id)}
-                        className="w-8 h-8 p-0 text-red-500 hover:text-red-700"
+                        disabled={removingPhotoId === photo.id}
+                        className="w-8 h-8 p-0 text-red-500 hover:text-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        <Trash2 className="w-3 h-3" />
+                        {removingPhotoId === photo.id ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : (
+                          <Trash2 className="w-3 h-3" />
+                        )}
                       </Button>
                     </div>
                   </div>

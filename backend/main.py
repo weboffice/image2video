@@ -1,6 +1,5 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 import uvicorn
 
@@ -46,8 +45,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Servir arquivos estáticos
-app.mount("/files", StaticFiles(directory=str(STORAGE_DIR)), name="files")
+# REMOVIDO: StaticFiles mount que causava conflito com /api/files/
+# Todos os arquivos agora são servidos via MinIO através do router /api/files/
+# app.mount("/files", StaticFiles(directory=str(STORAGE_DIR)), name="files")
 
 @app.get("/")
 async def root():
