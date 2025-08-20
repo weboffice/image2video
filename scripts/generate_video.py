@@ -306,7 +306,7 @@ class VideoGenerator:
             "-c:v", "libx264",
             "-preset", "medium",
             "-crf", "23",
-            "-pix_fmt", "yuv420p",
+            "-pix_fmt", "yuv420p", # TODO: Verificar se é necessário
             str(grid_output)
         ]
         
