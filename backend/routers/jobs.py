@@ -153,7 +153,7 @@ async def get_job_status(job_code: str):
                 "order_index": file.order_index,
                 "created_at": file.created_at.isoformat(),
                 # IMPORTANTE: URL que SEMPRE redireciona para o storage
-                "public_url": storage_endpoint_url,  # Sempre usar endpoint que redireciona para MinIO
+                "public_url": minio_url,  # Sempre usar endpoint que redireciona para MinIO
                 "storage_url": minio_url,  # URL direta do MinIO (se existir)
                 "minio_direct_url": minio_url,  # URL direta do MinIO (se existir)
                 "file_exists_in_storage": file_exists_in_storage,
