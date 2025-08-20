@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, BigInteger
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, BigInteger, Text, JSON
 from sqlalchemy.orm import relationship
 from datetime import datetime
 
@@ -32,3 +32,17 @@ class UploadFile(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     job = relationship("Job", back_populates="files")
+
+class VideoConfig(Base):
+    __tablename__ = "video_configs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    job_id = Column(String(32), unique=True, index=True, nullable=False)  # Job code como chave única
+    template_id = Column(String(100), nullable=False)
+    config_data = Column(JSON, nullable=False)  # Toda a configuração em JSON
+    status = Column(String(32), nullable=False, default="created")
+    progress = Column(Integer, nullable=False, default=0)
+    output_path = Column(String(500), nullable=True)  # Caminho do vídeo final
+    error_message = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)

@@ -11,18 +11,20 @@ from fastapi.responses import FileResponse, RedirectResponse
 # Imports resilientes
 try:
     from ..database import SessionLocal
-    from ..models import Job, UploadFile
+    from ..models import Job, UploadFile, VideoConfig as VideoConfigModel
     from ..minio_client import get_minio_client
     from ..config import STORAGE_DIR, PUBLIC_API_BASE
     from ..templates import TEMPLATES
     from ..video_processor import process_video_job
+    from ..video_config_db import create_video_config, get_video_config, update_video_config
 except ImportError:
     from database import SessionLocal
-    from models import Job, UploadFile
+    from models import Job, UploadFile, VideoConfig as VideoConfigModel
     from minio_client import get_minio_client
     from config import STORAGE_DIR, PUBLIC_API_BASE
     from templates import TEMPLATES
     from video_processor import process_video_job
+    from video_config_db import create_video_config, get_video_config, update_video_config
 
 router = APIRouter(prefix="/api/videos", tags=["videos"])
 
@@ -92,11 +94,7 @@ async def create_video(config: VideoConfig):
         # Criar job de vídeo
         video_job_id = str(uuid.uuid4()).replace("-", "")[:8].upper()
         
-        # Criar diretório específico para o job e salvar configuração
-        job_dir = STORAGE_DIR / "videos" / video_job_id
-        job_dir.mkdir(parents=True, exist_ok=True)
-        video_config_path = job_dir / f"{video_job_id}_config.json"
-        
+        # Preparar dados de configuração
         video_data = {
             "job_id": video_job_id,
             "template": template,
@@ -112,22 +110,15 @@ async def create_video(config: VideoConfig):
             "estimated_duration": total_duration
         }
         
-        # Salvar localmente
-        with open(video_config_path, "w") as f:
-            json.dump(video_data, f, indent=2)
-        
-        # Upload para MinIO
-        config_object_key = f"configs/{video_job_id}_config.json"
-        config_json = json.dumps(video_data, indent=2)
-        success = get_minio_client().upload_data(config_object_key, config_json.encode('utf-8'), "application/json")
-        
-        if success:
-            print(f"✅ Configuração enviada para MinIO: {config_object_key}")
-        else:
-            print(f"⚠️  Falha ao enviar configuração para MinIO")
+        # Salvar configuração no banco de dados
+        db_config = create_video_config(
+            job_id=video_job_id,
+            template_id=config.templateId,
+            config_data=video_data
+        )
         
         print(f"🎬 Job de vídeo criado: {video_job_id}")
-        print(f"📁 Config salva em: {video_config_path}")
+        print(f"💾 Config salva no banco de dados")
         print(f"⏱️ Duração estimada: {total_duration:.1f}s")
         
         # Iniciar processamento automaticamente
@@ -139,17 +130,52 @@ async def create_video(config: VideoConfig):
             
             def process_video():
                 try:
+                    # Atualizar status para processando
+                    update_video_config(video_job_id, status="processing", progress=5)
+                    
+                    # Criar arquivo temporário para compatibilidade com o processador existente
+                    temp_config_path = STORAGE_DIR / "videos" / f"{video_job_id}_temp_config.json"
+                    temp_config_path.parent.mkdir(parents=True, exist_ok=True)
+                    
+                    with open(temp_config_path, "w") as f:
+                        json.dump(video_data, f, indent=2)
+                    
                     # Usar o processador especificado na configuração
-                    result = process_video_job(video_config_path, STORAGE_DIR, use_moviepy=config.useMoviePy)
+                    result = process_video_job(temp_config_path, STORAGE_DIR, use_moviepy=config.useMoviePy)
+                    
+                    # Limpar arquivo temporário
+                    if temp_config_path.exists():
+                        temp_config_path.unlink()
+                    
                     if result["success"]:
                         print(f"✅ Vídeo {video_job_id} processado com sucesso")
+                        update_video_config(
+                            video_job_id, 
+                            status="completed", 
+                            progress=100,
+                            output_path=result.get("output_path")
+                        )
                     else:
-                        print(f"❌ Erro ao processar vídeo {video_job_id}: {result.get('error')}")
+                        error_msg = result.get('error', 'Erro desconhecido')
+                        print(f"❌ Erro no processamento do vídeo {video_job_id}: {error_msg}")
+                        update_video_config(
+                            video_job_id, 
+                            status="error", 
+                            progress=0,
+                            error_message=error_msg
+                        )
                 except Exception as e:
-                    print(f"❌ Erro inesperado ao processar vídeo {video_job_id}: {e}")
+                    error_msg = f"Erro crítico no processamento: {str(e)}"
+                    print(f"❌ {error_msg} - {video_job_id}")
+                    update_video_config(
+                        video_job_id, 
+                        status="error", 
+                        progress=0,
+                        error_message=error_msg
+                    )
                 finally:
-                    if video_job_id in processing_jobs:
-                        del processing_jobs[video_job_id]
+                    # Remover do dicionário de processamento
+                    processing_jobs.pop(video_job_id, None)
             
             thread = threading.Thread(target=process_video)
             thread.daemon = True
@@ -179,41 +205,20 @@ async def get_video_status(job_id: str):
             # Mapear para um job existente para demonstração
             actual_job_id = "F1AD7923"  # Usar um dos jobs existentes
         
-        # Carregar configuração do diretório do job
-        job_dir_config_path = STORAGE_DIR / "videos" / actual_job_id / f"{actual_job_id}_config.json"
-        video_data = None
+        # Buscar configuração no banco de dados
+        video_config = get_video_config(actual_job_id)
+        
+        if not video_config:
+            raise HTTPException(status_code=404, detail="Job de vídeo não encontrado")
         
         # Verificar se o job está sendo processado atualmente
         is_processing = actual_job_id in processing_jobs
         
-        # Tentar carregar do diretório do job
-        if job_dir_config_path.exists():
-            with open(job_dir_config_path, "r") as f:
-                video_data = json.load(f)
-        else:
-            # Tentar carregar do MinIO
-            config_object_key = f"configs/{actual_job_id}_config.json"
-            if get_minio_client().file_exists(config_object_key):
-                try:
-                    # Baixar configuração do MinIO
-                    temp_config_path = STORAGE_DIR / "videos" / f"{actual_job_id}_config_temp.json"
-                    if get_minio_client().download_file(config_object_key, temp_config_path):
-                        with open(temp_config_path, "r") as f:
-                            video_data = json.load(f)
-                        # Mover para localização padrão
-                        temp_config_path.rename(job_dir_config_path)
-                        print(f"✅ Configuração baixada do MinIO: {config_object_key}")
-                    else:
-                        raise HTTPException(status_code=404, detail="Falha ao baixar configuração do MinIO")
-                except Exception as e:
-                    print(f"❌ Erro ao baixar configuração do MinIO: {e}")
-                    raise HTTPException(status_code=404, detail="Job de vídeo não encontrado")
-            else:
-                raise HTTPException(status_code=404, detail="Job de vídeo não encontrado")
+        video_data = video_config.config_data
         
-        # Determinar status e progresso
-        status = video_data.get("status", "unknown")
-        progress = video_data.get("progress", 0)
+        # Usar dados do banco de dados
+        status = video_config.status
+        progress = video_config.progress
         
         # Debug: verificar se template existe
         template_info = video_data.get("template", {})
@@ -236,8 +241,8 @@ async def get_video_status(job_id: str):
             "status": status,
             "progress": progress,
             "estimated_duration": video_data.get("estimated_duration", 0),
-            "outputPath": video_data.get("output_path"),
-            "error": video_data.get("error"),
+            "outputPath": video_config.output_path,
+            "error": video_config.error_message,
             "is_processing": is_processing,
             "template": template_info  # Incluir informações do template
         }
